@@ -66,7 +66,7 @@ namespace Xb.App
 
 
             /// <summary>
-            /// Whether dump output of Resource Info is active.
+            /// Whether console-dump output of [Periodic Status Info] is active.
             /// リソース情報のダンプ出力が稼働中か否か
             /// </summary>
             public static bool IsDumpStatus
@@ -82,7 +82,7 @@ namespace Xb.App
 
 
             /// <summary>
-            /// Whether the dump output of the Task Verification Info is active.
+            /// Whether console-dump output of [Task Verification Info] is active.
             /// タスク検証情報のダンプ出力が稼働中か否か
             /// </summary>
             public static bool IsDumpTaskValidation
@@ -165,13 +165,22 @@ namespace Xb.App
             /// </summary>
             private Dumper(int timerSpanMsec = Job.Dumper.DefaultTimerSpanMsec)
             {
-                this.TimerSpanMsec = (timerSpanMsec <= 0) 
-                    ? Job.Dumper.DefaultTimerSpanMsec
-                    : timerSpanMsec;
+                this.SetTimerInterval(timerSpanMsec);
 
                 this.TimerExec();
             }
 
+            /// <summary>
+            /// Set the execution interval of periodic staus dump / task verification processing.
+            /// ステータス情報定期ダンプ／タスク検証処理の実行間隔をセットする。
+            /// </summary>
+            /// <param name="msec"></param>
+            public void SetTimerInterval(int msec)
+            {
+                this.TimerSpanMsec = (msec <= 0)
+                    ? Job.Dumper.DefaultTimerSpanMsec
+                    : msec;
+            }
 
             /// <summary>
             /// Perform timer processing for monitoring.

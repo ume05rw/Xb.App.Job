@@ -60,15 +60,15 @@ namespace Xb.App
         /// Whether Job-Info Manager is active.
         /// ジョブ情報管理が、現在稼働中か否か
         /// </summary>
-        public static bool IsWorkingJobInfo
+        public static bool IsWorkingJobManager
         {
             get { return Job.InfoStore.IsWorking; }
             set { Job.InfoStore.IsWorking = value; }
         }
 
         /// <summary>
-        /// Whether dump output of Resource Info is active.
-        /// リソース情報のダンプ出力が稼働中か否か
+        /// Whether console-dump output of [Periodic Status Info] is active.
+        /// ステータス情報の定期ダンプ出力が稼働中か否か
         /// </summary>
         public static bool IsDumpStatus
         {
@@ -77,13 +77,26 @@ namespace Xb.App
         }
 
         /// <summary>
-        /// Whether the dump output of the Task Verification Info is active.
+        /// Whether console-dump output of [Task Verification Info] is active.
         /// タスク検証情報のダンプ出力が稼働中か否か
         /// </summary>
         public static bool IsDumpTaskValidation
         {
             get { return Job.Dumper.IsDumpTaskValidation; }
             set { Job.Dumper.IsDumpTaskValidation = value; }
+        }
+
+        /// <summary>
+        /// Set the execution interval of periodic staus dump / task verification processing.
+        /// ステータス情報定期ダンプ／タスク検証処理の実行間隔をセットする。
+        /// </summary>
+        /// <param name="msec"></param>
+        public static void SetDumpTimerInterval(int msec)
+        {
+            if (!Job.Dumper.IsWorking)
+                throw new InvalidOperationException("Console-Dump Timer is not working.");
+
+            Job.Dumper.Instance.SetTimerInterval(msec);
         }
 
         #endregion
@@ -122,7 +135,7 @@ namespace Xb.App
 
 
         /// <summary>
-        /// Generate Job for serial processing.
+        /// Generate Job-Instance for serial processing.
         /// 連続処理用Job生成
         /// </summary>
         /// <param name="action"></param>
@@ -156,7 +169,7 @@ namespace Xb.App
 
 
         /// <summary>
-        /// Generate Delay for serial processing.
+        /// Generate Delay-Job-Instance for serial processing.
         /// 連続処理用の遅延を生成
         /// </summary>
         /// <param name="delayMsec"></param>
@@ -333,6 +346,102 @@ namespace Xb.App
 
 
         /// <summary>
+        /// Execute a job without return value.
+        /// 戻り値の無いジョブを実行する。
+        /// </summary>
+        /// <param name="action"></param>
+        /// <param name="isExecUiThread"></param>
+        /// <param name="jobName"></param>
+        /// <param name="cancellation"></param>
+        /// <returns></returns>
+        public static async Task Run(Action action
+                                   , bool isExecUiThread
+                                   , string jobName = null
+                                   , CancellationTokenSource cancellation = null)
+        {
+            try
+            {
+                var callerName = action.Target?.GetType().Name ?? "";
+                var startId = Job.InfoStore.Instance?.Start(jobName, callerName);
+
+                try
+                {
+                    if (isExecUiThread && Job.IsUIThread)
+                    {
+                        //UIスレッド指定で、かつ現在UIスレッドのとき、そのまま実行する。
+                        try
+                        {
+                            Job.InfoStore.Instance?.SetThreadId(startId);
+                            action.Invoke();
+                        }
+                        catch (Exception ex)
+                        {
+                            Xb.Util.Out(ex);
+                            Job.InfoStore.Instance?.ErrorEnd(startId);
+                            throw;
+                        }
+                        Job.InfoStore.Instance?.End(startId);
+                        return;
+                    }
+
+                    var innerAction = new Action(() =>
+                    {
+                        try
+                        {
+                            Job.InfoStore.Instance?.SetThreadId(startId);
+                            action.Invoke();
+                        }
+                        catch (Exception ex)
+                        {
+                            Xb.Util.Out(ex);
+                            Job.InfoStore.Instance?.ErrorEnd(startId);
+                            throw;
+                        }
+                    });
+
+                    //Task.Startは、スケジュールが必要な場合以外は使用しない。
+                    //※UIスレッドが開いているとき、UIスレッドを使ってしまう現象があった。
+                    //https://blogs.msdn.microsoft.com/pfxteam/2010/06/13/task-factory-startnew-vs-new-task-start/
+                    if (isExecUiThread)
+                    {
+                        var task = (cancellation == null)
+                                        ? new Task(innerAction)
+                                        : new Task(innerAction, cancellation.Token);
+
+                        task.Start(Job._uiTaskScheduler);
+
+                        await task.ConfigureAwait(false);
+
+                        task = null;
+                    }
+                    else
+                    {
+                        var task = (cancellation == null)
+                                        ? Task.Run(innerAction)
+                                        : Task.Run(innerAction, cancellation.Token);
+
+                        await task.ConfigureAwait(false);
+
+                        task = null;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Xb.Util.Out(ex);
+                    throw;
+                }
+
+                Job.InfoStore.Instance?.End(startId);
+            }
+            catch (Exception ex)
+            {
+                Xb.Util.Out(ex);
+                throw;
+            }
+        }
+
+
+        /// <summary>
         /// Execute a job with return value.
         /// 戻り値付きジョブを実行する。
         /// </summary>
@@ -423,102 +532,6 @@ namespace Xb.App
                 Job.InfoStore.Instance?.End(startId);
 
                 return result;
-            }
-            catch (Exception ex)
-            {
-                Xb.Util.Out(ex);
-                throw;
-            }
-        }
-
-
-        /// <summary>
-        /// Execute a job without return value.
-        /// 戻り値の無いジョブを実行する。
-        /// </summary>
-        /// <param name="action"></param>
-        /// <param name="isExecUiThread"></param>
-        /// <param name="jobName"></param>
-        /// <param name="cancellation"></param>
-        /// <returns></returns>
-        public static async Task Run(Action action
-                                   , bool isExecUiThread
-                                   , string jobName = null
-                                   , CancellationTokenSource cancellation = null)
-        {
-            try
-            {
-                var callerName = action.Target?.GetType().Name ?? "";
-                var startId = Job.InfoStore.Instance?.Start(jobName, callerName);
-
-                try
-                {
-                    if (isExecUiThread && Job.IsUIThread)
-                    {
-                        //UIスレッド指定で、かつ現在UIスレッドのとき、そのまま実行する。
-                        try
-                        {
-                            Job.InfoStore.Instance?.SetThreadId(startId);
-                            action.Invoke();
-                        }
-                        catch (Exception ex)
-                        {
-                            Xb.Util.Out(ex);
-                            Job.InfoStore.Instance?.ErrorEnd(startId);
-                            throw;
-                        }
-                        Job.InfoStore.Instance?.End(startId);
-                        return;
-                    }
-
-                    var innerAction = new Action(() =>
-                    {
-                        try
-                        {
-                            Job.InfoStore.Instance?.SetThreadId(startId);
-                            action.Invoke();
-                        }
-                        catch (Exception ex)
-                        {
-                            Xb.Util.Out(ex);
-                            Job.InfoStore.Instance?.ErrorEnd(startId);
-                            throw;
-                        }
-                    });
-
-                    //Task.Startは、スケジュールが必要な場合以外は使用しない。
-                    //※UIスレッドが開いているとき、UIスレッドを使ってしまう現象があった。
-                    //https://blogs.msdn.microsoft.com/pfxteam/2010/06/13/task-factory-startnew-vs-new-task-start/
-                    if (isExecUiThread)
-                    {
-                        var task = (cancellation == null)
-                                        ? new Task(innerAction)
-                                        : new Task(innerAction, cancellation.Token);
-
-                        task.Start(Job._uiTaskScheduler);
-
-                        await task.ConfigureAwait(false);
-
-                        task = null;
-                    }
-                    else
-                    {
-                        var task = (cancellation == null)
-                                        ? Task.Run(innerAction)
-                                        : Task.Run(innerAction, cancellation.Token);
-
-                        await task.ConfigureAwait(false);
-
-                        task = null;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Xb.Util.Out(ex);
-                    throw;
-                }
-
-                Job.InfoStore.Instance?.End(startId);
             }
             catch (Exception ex)
             {
