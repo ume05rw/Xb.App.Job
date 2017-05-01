@@ -1,7 +1,7 @@
 Xb.App.Job
 ====
 
-Xamarin & .NET Core Ready, Thread.Task Replacer Implementation. Dump task lyfecycle, Detect Deadlock suspicious thread.
+Xamarin & .NET Core Ready, Thread.Task Replacer Implementation. Dump task lyfecycle, Detect zombie thread.
 
 ## Description
 
@@ -36,9 +36,28 @@ ex) Exec Task on Non-UI Thread.
 
 ex) Task Info on the Console.  
 
-    09:20:26.721:  [ThID:   8]  Job.Run Start  ThID:     8,  StartTime: 09:20:25.760,  ProcTime:     0.960 sec,  ActiveThreads:   9, JobName: StoreBase.DelayedUpdated  CalledClass: StorePurchase
+    09:20:26.721: Job.Run Start  ThID:     8,  StartTime: 09:20:25.760,  ProcTime:     0.960 sec,  ActiveThreads:   9, JobName: StoreBase.DelayedUpdated  CalledClass: StorePurchase
   
   　  
+ex) Exec the serial task with CancelToken.
+    
+    using Xb.App;
+    
+    var canceller = new CancellationTokenSource();
+    
+    Job.RunSerial(
+        canceller,
+        Job.CreateDelay(400),
+        Job.CreateJob(() => 
+        {
+            //Task1
+        }),
+        Job.CreateJob(() => 
+        {
+            //Task2
+        })
+    );
+
 Namespace and Methods are...
 
     ・Xb.App
@@ -126,6 +145,10 @@ Namespace and Methods are...
           |   +- .CreateDelay(int delayMsec = 300)
           |   |   Generate Delay-Job-Instance for serial processing.
           |   |
+          |   +- .RunSerial(CancellationTokenSource cancellation = null,
+          |   |             params Job[] jobs)
+          |   |   Execute the Job-Instance array sequentially.
+          |   |
           |   +- .RunSerial(params Job[] jobs)
           |   |   Execute the Job-Instance array sequentially.
           |   |
@@ -133,7 +156,12 @@ Namespace and Methods are...
           |   |   Execute the Action array sequentially with non-UI-Threads.
           |   |
           |   +- .RunSerial<T>(Func<T> lastJob,
-          |                    bool isUiThreadLastJob = false,
+          |   |                bool isUiThreadLastJob = false,
+          |   |                CancellationTokenSource cancellation = null,
+          |   |                params Job[] jobs)
+          |   |   Execute a continuous job with return value.
+          |   |
+          |   +- .RunSerial<T>(Func<T> lastJob,
           |                    params Job[] jobs)
           |       Execute a continuous job with return value.
           |

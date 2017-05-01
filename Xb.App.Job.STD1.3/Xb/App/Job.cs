@@ -202,9 +202,11 @@ namespace Xb.App
         /// Execute the Job instance array sequentially.
         /// Jobインスタンス配列を順次実行する。
         /// </summary>
+        /// <param name="cancellation"></param>
         /// <param name="jobs"></param>
         /// <returns></returns>
-        public static async Task RunSerial(params Job[] jobs)
+        public static async Task RunSerial(CancellationTokenSource cancellation = null
+                                         , params Job[] jobs)
         {
             try
             {
@@ -216,9 +218,35 @@ namespace Xb.App
                     if (job.DelayMSec > 0)
                         await Job.Wait(job.DelayMSec);
                     else
-                        await Job.Run(job.Action, job.IsExecUIThread, job.JobName)
-                                         .ConfigureAwait(false);
+                        await Job.Run(job.Action
+                                    , job.IsExecUIThread
+                                    , job.JobName
+                                    , cancellation)
+                                 .ConfigureAwait(false);
                 }
+            }
+            catch (Exception ex)
+            {
+                Xb.Util.Out(ex);
+                throw;
+            }
+        }
+
+
+        /// <summary>
+        /// Execute the Job instance array sequentially.
+        /// Jobインスタンス配列を順次実行する。
+        /// </summary>
+        /// <param name="jobs"></param>
+        /// <returns></returns>
+        public static async Task RunSerial(params Job[] jobs)
+        {
+            try
+            {
+                if (jobs == null)
+                    return;
+
+                await Job.RunSerial(null, jobs);
             }
             catch (Exception ex)
             {
@@ -240,9 +268,11 @@ namespace Xb.App
             {
                 if (actions == null)
                     return;
+
                 var jobs = actions.Select(action => Job.CreateJob(action, false, "Job.RunSerial"))
                                   .ToArray();
-                await Job.RunSerial(jobs);
+
+                await Job.RunSerial(null, jobs);
             }
             catch (Exception ex)
             {
@@ -259,16 +289,47 @@ namespace Xb.App
         /// <typeparam name="T"></typeparam>
         /// <param name="lastJob"></param>
         /// <param name="isUiThreadLastJob"></param>
+        /// <param name="cancellation"></param>
         /// <param name="jobs"></param>
         /// <returns></returns>
-        public static async Task<T> RunSerial<T>(Func<T> lastJob,
-                                                 bool isUiThreadLastJob = false,
-                                                 params Job[] jobs)
+        public static async Task<T> RunSerial<T>(Func<T> lastJob
+                                               , bool isUiThreadLastJob = false
+                                               , CancellationTokenSource cancellation = null
+                                               , params Job[] jobs)
         {
             try
             {
-                await Job.RunSerial(jobs);
-                return await Job.Run<T>(lastJob, isUiThreadLastJob, "Job.RunSerial");
+                await Job.RunSerial(cancellation, jobs);
+                return await Job.Run<T>(lastJob
+                                      , isUiThreadLastJob
+                                      , "Job.RunSerial"
+                                      , cancellation);
+            }
+            catch (Exception ex)
+            {
+                Xb.Util.Out(ex);
+                throw;
+            }
+        }
+
+
+        /// <summary>
+        /// Execute a continuous job with return value.
+        /// Jobインスタンス配列を順次実行したあと、最後に戻り値がある処理を実行する。
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="lastJob"></param>
+        /// <param name="jobs"></param>
+        /// <returns></returns>
+        public static async Task<T> RunSerial<T>(Func<T> lastJob
+                                               , params Job[] jobs)
+        {
+            try
+            {
+                await Job.RunSerial(null, jobs);
+                return await Job.Run<T>(lastJob
+                                      , false
+                                      , "Job.RunSerial");
             }
             catch (Exception ex)
             {

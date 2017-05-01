@@ -12,7 +12,7 @@ namespace Xb.App
         /// Job Manager Class
         /// Job情報管理クラス
         /// </summary>
-        private sealed class InfoStore : IDisposable
+        public sealed class InfoStore : IDisposable
         {
             //Singleton実装
             private static Job.InfoStore _instance;
