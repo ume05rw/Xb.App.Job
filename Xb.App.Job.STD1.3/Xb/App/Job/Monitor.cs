@@ -9,30 +9,30 @@ namespace Xb.App
     public partial class Job
     {
         /// <summary>
-        /// Job Manager Class
-        /// Job情報管理クラス
+        /// Job Monitor Class
+        /// Job監視クラス
         /// </summary>
-        public sealed class InfoStore : IDisposable
+        public sealed class Monitor : IDisposable
         {
             //Singleton実装
-            private static Job.InfoStore _instance;
+            private static Job.Monitor _instance;
 
             /// <summary>
             /// Job.InfoStore Instance
             /// </summary>
-            public static Job.InfoStore Instance => Job.InfoStore._instance;
+            public static Job.Monitor Instance => Job.Monitor._instance;
 
             /// <summary>
             /// Create Instance(Singleton)
             /// </summary>
             /// <param name="isWorkingJobOnly"></param>
             /// <returns></returns>
-            public static Job.InfoStore Create(bool isWorkingJobOnly = true)
+            private static Job.Monitor Create(bool isWorkingJobOnly = true)
             {
                 try
                 {
-                    return Job.InfoStore._instance 
-                           ?? (Job.InfoStore._instance = new Job.InfoStore(isWorkingJobOnly));
+                    return Job.Monitor._instance 
+                           ?? (Job.Monitor._instance = new Job.Monitor(isWorkingJobOnly));
                 }
                 catch (Exception ex)
                 {
@@ -44,10 +44,10 @@ namespace Xb.App
             /// <summary>
             /// Dispose Instance
             /// </summary>
-            public static void DisposeInstance()
+            private static void DisposeInstance()
             {
-                Job.InfoStore._instance?.Dispose();
-                Job.InfoStore._instance = null;
+                Job.Monitor._instance?.Dispose();
+                Job.Monitor._instance = null;
             }
 
 
@@ -57,16 +57,16 @@ namespace Xb.App
             /// </summary>
             public static bool IsWorking
             {
-                get { return (Job.InfoStore.Instance != null); }
+                get { return (Job.Monitor.Instance != null); }
                 set
                 {
-                    if (value && Job.InfoStore.Instance == null)
+                    if (value && Job.Monitor.Instance == null)
                     {
-                        Job.InfoStore.Create();
+                        Job.Monitor.Create();
                     }
-                    else if (!value && Job.InfoStore.Instance != null)
+                    else if (!value && Job.Monitor.Instance != null)
                     {
-                        Job.InfoStore.DisposeInstance();
+                        Job.Monitor.DisposeInstance();
                     }
                 }
             }
@@ -80,15 +80,15 @@ namespace Xb.App
             {
                 public bool IsLocked { get; set; } = false;
             }
+            
 
 
-            #region "インスタンス実装"
 
             /// <summary>
             /// lock-object for exclusive control
             /// ジョブ追加／削除時等のロックオブジェクト
             /// </summary>
-            private Job.InfoStore.Locker _locker = new Job.InfoStore.Locker();
+            private Job.Monitor.Locker _locker = new Job.Monitor.Locker();
 
             /// <summary>
             /// Job.Info Array
@@ -133,10 +133,11 @@ namespace Xb.App
             /// コンストラクタ
             /// </summary>
             /// <param name="isWorkingJobOnly"></param>
-            private InfoStore(bool isWorkingJobOnly = true)
+            private Monitor(bool isWorkingJobOnly = true)
             {
                 this.IsWorkingJobOnly = isWorkingJobOnly;
             }
+
 
             /// <summary>
             /// Generate job information and place it under control.
@@ -305,14 +306,14 @@ namespace Xb.App
             /// </summary>
             /// <param name="isOnWorkOnly">Filter it ended jobs. 稼働中ジョブのみに絞る</param>
             /// <returns></returns>
-            public string[] GetInfoDump(bool isOnWorkOnly = true)
+            public string[] GetStatus(bool isOnWorkOnly = true)
             {
                 try
                 {
                     var dumpLines = new List<string>
                     {
                         $"------------------------------------------------------------",
-                        $"- Job Infos ",
+                        $"- Job Status ",
                         $"OnWork: {this.OnWork},  Started: {this.Started},  Ended: {this.Ended}"
                     };
 
@@ -344,11 +345,11 @@ namespace Xb.App
 
 
             /// <summary>
-            /// Generate string array of task verification.
+            /// Generate string array of task validation.
             /// タスク検証結果の文字列配列を生成する。
             /// </summary>
             /// <returns></returns>
-            public string[] GetSuspiciousDump()
+            public string[] GetValidation()
             {
                 try
                 {
@@ -491,7 +492,6 @@ namespace Xb.App
             }
             #endregion
 
-            #endregion
         }
     }
 }

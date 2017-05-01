@@ -64,30 +64,29 @@ Namespace and Methods are...
           |
           +- Job(static)
           |   |
+          |   | ### Setting & Parameters ###
+          |   |
           |   +- .Init()
           |   |   Initialize - ** MAKE SURE to execute this with UI-THREAD. **
-          |   |
-          |   |
-          |   | ### settings and parameters ###
           |   |
           |   +- .IsUIThread { get; }
           |   |   Whether the current thread is a UI thread
           |   |
-          |   +- .IsWorkingJobManager { get; set; }
-          |   |   Whether Job-Info Manager is active.
+          |   +- .IsMonitorEnabled { get; set; }
+          |   |   Whether Job Monitor is active.
           |   |
           |   +- .IsDumpStatus { get; set; }
           |   |   Whether console-dump output of [Periodic Status Info] is active.
           |   |
           |   +- .IsDumpTaskValidation { get; set; }
-          |   |   Whether console-dump output of [Task Verification Info] is active.
+          |   |   Whether console-dump output of [Task Varidation Info] is active.
           |   |
-          |   +- .SetDumpTimerInterval(int msec)
-          |   |   Set the execution interval of periodic staus dump / task verification processing.
+          |   +- .TimerIntervalMsec { get; set; }
+          |   |   execution interval of periodic staus dump / task verification processing.
           |   |
           |   |
           |   |
-          |   | ### for single task processing ###
+          |   | ### for Single Task Processing ###
           |   |
           |   +- .Run(Action action,
           |   |       bool isExecUiThread,
@@ -103,29 +102,29 @@ Namespace and Methods are...
           |   |
           |   +- .Run(Action action,
           |   |       string jobName = null)
-          |   |   Execute the passed Action asynchronously in Non-UI-Thread.
+          |   |   Execute the passed Action asynchronously on Non-UI-Thread.
           |   |
           |   +- .RunUI(Action action,
           |   |         string jobName = null)
-          |   |   Execute the passed Action asynchronously in UI-Thread.
+          |   |   Execute the passed Action asynchronously on UI-Thread.
           |   |
           |   +- .DelayedRun(Action action,
           |   |              int msec,
           |   |              string jobName = null)
-          |   |   Delayed Execute the passed Action asynchronously in Non-UI-Thread.
+          |   |   Delayed Execute the passed Action asynchronously on Non-UI-Thread.
           |   |
           |   +- .DelayedRunUI(Action action,
           |   |                int msec,
           |   |                string jobName = null)
-          |   |   Delayed Execute the passed Action asynchronously in UI-Thread.
+          |   |   Delayed Execute the passed Action asynchronously on UI-Thread.
           |   |
           |   +- .RunSynced(Action action
           |   |             string jobName = null)
-          |   |   Synchronously Execute the passed Action in Non-UI-Thread.
+          |   |   Synchronously Execute the passed Action on Non-UI-Thread.
           |   |
           |   +- .RunUISynced(Action action
           |   |               string jobName = null)
-          |   |   Synchronously Execute the passed Action in Non-UI-Thread.
+          |   |   Synchronously Execute the passed Action on Non-UI-Thread.
           |   |
           |   +- .Wait(int msec)
           |   |   Wait for specified milliseconds.
@@ -135,7 +134,7 @@ Namespace and Methods are...
           |   |
           |   |
           |   |
-          |   | ### for serial task processing ###
+          |   | ### for Serial Tasks Processing ###
           |   |
           |   +- .CreateJob(Action action,
           |   |             bool isExecUiThread = false,
@@ -153,7 +152,7 @@ Namespace and Methods are...
           |   |   Execute the Job-Instance array sequentially.
           |   |
           |   +- .RunSerial(params Action[] actions)
-          |   |   Execute the Action array sequentially with non-UI-Threads.
+          |   |   Execute the Action array sequentially with Non-UI-Threads.
           |   |
           |   +- .RunSerial<T>(Func<T> lastJob,
           |   |                bool isUiThreadLastJob = false,
@@ -177,7 +176,7 @@ Namespace and Methods are...
               |  Start Delay
               |
               +- JobName { get; }
-                 Name of Info in Job-Manager.
+                 Name of Info in Job-Monitor.
            
 
 

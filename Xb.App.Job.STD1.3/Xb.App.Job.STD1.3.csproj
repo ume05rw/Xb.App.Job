@@ -46,7 +46,7 @@
     <Compile Include="Xb\App\Job.cs" />
     <Compile Include="Xb\App\Job\Dumper.cs" />
     <Compile Include="Xb\App\Job\Info.cs" />
-    <Compile Include="Xb\App\Job\InfoStore.cs" />
+    <Compile Include="Xb\App\Job\Monitor.cs" />
   </ItemGroup>
   <ItemGroup />
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\Portable\$(TargetFrameworkVersion)\Microsoft.Portable.CSharp.targets" />

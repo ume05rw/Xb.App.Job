@@ -14,21 +14,42 @@ namespace Xb.App
     public partial class Job
     {
 
-        #region "ジョブ監視関連機能"
+        #region "Setting & Parameters"
 
         /// <summary>
-        /// Start Job-Info Manager.
-        /// ジョブ情報管理を開始する。
+        /// UI-Thread TaskScheduler
+        /// UIスレッドのタスクスケジューラ
         /// </summary>
-        /// <param name="isWorkingJobOnly"></param>
-        public static void InitJobInfo(bool isWorkingJobOnly = true)
+        private static TaskScheduler _uiTaskScheduler = null;
+
+        /// <summary>
+        /// UI-Thread ID
+        /// UIスレッドID
+        /// </summary>
+        private static int _uiThreadId = -1;
+
+
+        /// <summary>
+        /// Initialize
+        /// 初期化処理
+        /// </summary>
+        /// <remarks>
+        /// ** MAKE SURE to execute this with UI-THREAD. **
+        /// </remarks>
+        public static void Init()
         {
             try
             {
-                if (Job.InfoStore.Instance != null)
-                    Job.DisposeJobInfo();
+                //Get UI-Thread infomation
+                Job._uiThreadId = Thread.CurrentThread.ManagedThreadId;
+                Job._uiTaskScheduler = TaskScheduler.FromCurrentSynchronizationContext();
+                Xb.Util.Out($"UI Thread ID = {Job._uiThreadId}");
 
-                Job.InfoStore.Create(isWorkingJobOnly);
+                //Start Job Monitor
+                Job.IsMonitorEnabled = true;
+
+                //Start Task-Validation
+                Job.IsDumpTaskValidation = true;
             }
             catch (Exception ex)
             {
@@ -39,31 +60,40 @@ namespace Xb.App
 
 
         /// <summary>
-        /// Disable Job-Info Manager.
-        /// ジョブ情報管理を停止する。
+        /// Whether the current thread is a UI thread.
+        /// カレントスレッドがUIスレッドか否かを判定する。
         /// </summary>
-        public static void DisposeJobInfo()
+        /// <returns></returns>
+        /// <remarks>
+        /// ** Before executing this method, MAKE SURE to execute [ Xb.App.Job.Init() ] with UI-THREAD. **
+        /// </remarks>
+        public static bool IsUIThread
         {
-            try
+            get
             {
-                Job.InfoStore.DisposeInstance();
-            }
-            catch (Exception ex)
-            {
-                Xb.Util.Out(ex);
-                throw;
+                try
+                {
+                    if (Job._uiThreadId == -1)
+                        throw new InvalidOperationException("Exec [ Xb.App.Job.Init() ] with UI-Thread.");
+
+                    return (Thread.CurrentThread.ManagedThreadId == Job._uiThreadId);
+                }
+                catch (Exception ex)
+                {
+                    Xb.Util.Out(ex);
+                    throw;
+                }
             }
         }
 
-
         /// <summary>
-        /// Whether Job-Info Manager is active.
+        /// Whether Job Monitor is active.
         /// ジョブ情報管理が、現在稼働中か否か
         /// </summary>
-        public static bool IsWorkingJobManager
+        public static bool IsMonitorEnabled
         {
-            get { return Job.InfoStore.IsWorking; }
-            set { Job.InfoStore.IsWorking = value; }
+            get { return Job.Monitor.IsWorking; }
+            set { Job.Monitor.IsWorking = value; }
         }
 
         /// <summary>
@@ -77,7 +107,7 @@ namespace Xb.App
         }
 
         /// <summary>
-        /// Whether console-dump output of [Task Verification Info] is active.
+        /// Whether console-dump output of [Task Varidation Info] is active.
         /// タスク検証情報のダンプ出力が稼働中か否か
         /// </summary>
         public static bool IsDumpTaskValidation
@@ -87,22 +117,403 @@ namespace Xb.App
         }
 
         /// <summary>
-        /// Set the execution interval of periodic staus dump / task verification processing.
-        /// ステータス情報定期ダンプ／タスク検証処理の実行間隔をセットする。
+        /// execution interval of periodic staus dump / task verification processing.
+        /// ステータス情報定期ダンプ／タスク検証処理の実行間隔
         /// </summary>
-        /// <param name="msec"></param>
-        public static void SetDumpTimerInterval(int msec)
+        public static int TimerIntervalMsec
         {
-            if (!Job.Dumper.IsWorking)
-                throw new InvalidOperationException("Console-Dump Timer is not working.");
+            get
+            {
+                return (Job.Dumper.IsWorking)
+                    ? Job.Dumper.Instance.TimerIntervalMsec
+                    : -1;
+            }
+            set
+            {
+                if (!Job.Dumper.IsWorking)
+                    throw new InvalidOperationException("Console-Dump Timer is not working.");
 
-            Job.Dumper.Instance.SetTimerInterval(msec);
+                if (value <= 1000)
+                    throw new ArgumentException("Too Tiny Interval");
+
+                Job.Dumper.Instance.TimerIntervalMsec = value;
+            }
         }
 
         #endregion
 
 
-        #region "ジョブ連続処理定義"
+        #region "for Single Task Processing"
+
+
+        /// <summary>
+        /// Execute a job without return value.
+        /// 戻り値の無いジョブを実行する。
+        /// </summary>
+        /// <param name="action"></param>
+        /// <param name="isExecUiThread"></param>
+        /// <param name="jobName"></param>
+        /// <param name="cancellation"></param>
+        /// <returns></returns>
+        public static async Task Run(Action action
+                                   , bool isExecUiThread
+                                   , string jobName = null
+                                   , CancellationTokenSource cancellation = null)
+        {
+            try
+            {
+                var callerName = action.Target?.GetType().Name ?? "";
+                var startId = Job.Monitor.Instance?.Start(jobName, callerName);
+
+                try
+                {
+                    if (isExecUiThread && Job.IsUIThread)
+                    {
+                        //UIスレッド指定で、かつ現在UIスレッドのとき、そのまま実行する。
+                        try
+                        {
+                            Job.Monitor.Instance?.SetThreadId(startId);
+                            action.Invoke();
+                        }
+                        catch (Exception ex)
+                        {
+                            Xb.Util.Out(ex);
+                            Job.Monitor.Instance?.ErrorEnd(startId);
+                            throw;
+                        }
+                        Job.Monitor.Instance?.End(startId);
+                        return;
+                    }
+
+                    var innerAction = new Action(() =>
+                    {
+                        try
+                        {
+                            Job.Monitor.Instance?.SetThreadId(startId);
+                            action.Invoke();
+                        }
+                        catch (Exception ex)
+                        {
+                            Xb.Util.Out(ex);
+                            Job.Monitor.Instance?.ErrorEnd(startId);
+                            throw;
+                        }
+                    });
+
+                    //Task.Startは、スケジュールが必要な場合以外は使用しない。
+                    //※UIスレッドが開いているとき、UIスレッドを使ってしまう現象があった。
+                    //https://blogs.msdn.microsoft.com/pfxteam/2010/06/13/task-factory-startnew-vs-new-task-start/
+                    if (isExecUiThread)
+                    {
+                        var task = (cancellation == null)
+                                        ? new Task(innerAction)
+                                        : new Task(innerAction, cancellation.Token);
+
+                        task.Start(Job._uiTaskScheduler);
+
+                        await task.ConfigureAwait(false);
+
+                        task = null;
+                    }
+                    else
+                    {
+                        var task = (cancellation == null)
+                                        ? Task.Run(innerAction)
+                                        : Task.Run(innerAction, cancellation.Token);
+
+                        await task.ConfigureAwait(false);
+
+                        task = null;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Xb.Util.Out(ex);
+                    throw;
+                }
+
+                Job.Monitor.Instance?.End(startId);
+            }
+            catch (Exception ex)
+            {
+                Xb.Util.Out(ex);
+                throw;
+            }
+        }
+
+
+        /// <summary>
+        /// Execute a job with return value.
+        /// 戻り値付きジョブを実行する。
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="action"></param>
+        /// <param name="isExecUiThread"></param>
+        /// <param name="jobName"></param>
+        /// <param name="cancellation"></param>
+        /// <returns></returns>
+        public static async Task<T> Run<T>(Func<T> action
+                                         , bool isExecUiThread
+                                         , string jobName = null
+                                         , CancellationTokenSource cancellation = null)
+        {
+            try
+            {
+                var callerName = action.Target?.GetType().Name ?? "";
+                var startId = Job.Monitor.Instance?.Start(jobName, callerName);
+
+                var result = default(T);
+                try
+                {
+                    if (isExecUiThread && Job.IsUIThread)
+                    {
+                        //UIスレッド指定で、かつ現在UIスレッドのとき、そのまま実行する。
+                        try
+                        {
+                            Job.Monitor.Instance?.SetThreadId(startId);
+                            result = action.Invoke();
+                        }
+                        catch (Exception ex)
+                        {
+                            Xb.Util.Out(ex);
+                            Job.Monitor.Instance?.ErrorEnd(startId);
+                            throw;
+                        }
+                        Job.Monitor.Instance?.End(startId);
+                        return result;
+                    }
+
+                    var innerAction = new Func<T>(() =>
+                    {
+                        try
+                        {
+                            Job.Monitor.Instance?.SetThreadId(startId);
+                            return action.Invoke();
+                        }
+                        catch (Exception ex)
+                        {
+                            Xb.Util.Out(ex);
+                            Job.Monitor.Instance?.ErrorEnd(startId);
+                            throw;
+                        }
+                    });
+
+                    //Task.Startは、スケジュールが必要な場合以外は使用しない。
+                    //※UIスレッドが開いているとき、UIスレッドを使ってしまう現象があった。
+                    //https://blogs.msdn.microsoft.com/pfxteam/2010/06/13/task-factory-startnew-vs-new-task-start/
+                    if (isExecUiThread)
+                    {
+                        var task = (cancellation == null)
+                                        ? new Task<T>(innerAction)
+                                        : new Task<T>(innerAction, cancellation.Token);
+
+                        task.Start(Job._uiTaskScheduler);
+
+                        result = await task.ConfigureAwait(false);
+
+                        task = null;
+                    }
+                    else
+                    {
+                        var task = (cancellation == null)
+                                        ? Task.Run(innerAction)
+                                        : Task.Run(innerAction, cancellation.Token);
+
+                        result = await task.ConfigureAwait(false);
+
+                        task = null;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Xb.Util.Out(ex);
+                    throw;
+                }
+
+                Job.Monitor.Instance?.End(startId);
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                Xb.Util.Out(ex);
+                throw;
+            }
+        }
+
+
+        /// <summary>
+        /// Execute the passed Action asynchronously on Non-UI-Thread.
+        /// 渡し値Actionを非UIスレッドで非同期実行する。
+        /// </summary>
+        /// <param name="action"></param>
+        /// <param name="jobName"></param>
+        public static void Run(Action action, string jobName = null)
+        {
+            try
+            {
+                Job.Run(action, false, jobName).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                Xb.Util.Out(ex);
+                throw;
+            }
+        }
+
+
+        /// <summary>
+        /// Execute the passed Action asynchronously on UI-Thread.
+        /// 渡し値ActionをUIスレッドで非同期実行する。
+        /// </summary>
+        /// <param name="action"></param>
+        /// <param name="jobName"></param>
+        /// <returns></returns>
+        public static void RunUI(Action action, string jobName = null)
+        {
+            try
+            {
+                Job.Run(action, true, jobName).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                Xb.Util.Out(ex);
+                throw;
+            }
+        }
+
+
+        /// <summary>
+        /// Synchronously Execute the passed Action on Non-UI-Thread.
+        /// 渡し値Actionを非UIスレッドで同期的に実行する。
+        /// </summary>
+        /// <param name="action"></param>
+        /// <param name="jobName"></param>
+        public static void RunSynced(Action action, string jobName = null)
+        {
+            try
+            {
+                Job.Run(action, false, jobName).ConfigureAwait(false).GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                Xb.Util.Out(ex);
+                throw;
+            }
+        }
+
+
+        /// <summary>
+        /// Synchronously Execute the passed Action on Non-UI-Thread.
+        /// 渡し値Actionを、UIスレッドで同期的に実行する。
+        /// </summary>
+        /// <param name="action"></param>
+        /// <param name="jobName"></param>
+        public static void RunUISynced(Action action, string jobName = null)
+        {
+            try
+            {
+                Job.Run(action, true, jobName).ConfigureAwait(false).GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                Xb.Util.Out(ex);
+                throw;
+            }
+        }
+
+
+        /// <summary>
+        /// Wait for specified milliseconds.
+        /// 指定ミリ秒待つ
+        /// </summary>
+        /// <param name="msec"></param>
+        /// <returns></returns>
+        public static async Task Wait(int msec)
+        {
+            try
+            {
+                await Task.Delay(msec).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                Xb.Util.Out(ex);
+                throw;
+            }
+        }
+
+
+        /// <summary>
+        /// Synchronously Wait for specified milliseconds.
+        /// 指定ミリ秒を同期的に待つ
+        /// </summary>
+        /// <param name="msec"></param>
+        public static void WaitSynced(int msec)
+        {
+            try
+            {
+                Job.Wait(msec).GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                Xb.Util.Out(ex);
+                throw;
+            }
+        }
+
+
+        /// <summary>
+        /// Delayed Execute the passed Action asynchronously on Non-UI-Thread.
+        /// 渡し値Actionを非UIスレッドで遅延つき非同期実行する。
+        /// </summary>
+        /// <param name="action"></param>
+        /// <param name="msec"></param>
+        /// <param name="jobName"></param>
+        public static void DelayedRun(Action action, int msec, string jobName = null)
+        {
+            try
+            {
+                Job.RunSerial(
+                    Job.CreateDelay(msec),
+                    Job.CreateJob(action, false, jobName)
+                ).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                Xb.Util.Out(ex);
+                throw;
+            }
+        }
+
+
+        /// <summary>
+        /// Delayed Execute the passed Action asynchronously on UI-Thread.
+        /// 渡し値ActionをUIスレッドで非同期実行する。
+        /// </summary>
+        /// <param name="action"></param>
+        /// <param name="msec"></param>
+        /// <param name="jobName"></param>
+        /// <returns></returns>
+        public static void DelayedRunUI(Action action, int msec, string jobName = null)
+        {
+            try
+            {
+                Job.RunSerial(
+                    Job.CreateDelay(msec),
+                    Job.CreateJob(action, true, jobName)
+                ).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                Xb.Util.Out(ex);
+                throw;
+            }
+        }
+
+        #endregion
+
+
+        #region "for Serial Tasks Processing"
 
         /// <summary>
         /// Job Logic
@@ -257,7 +668,7 @@ namespace Xb.App
 
 
         /// <summary>
-        /// Execute the Action array sequentially with non-UI-Threads.
+        /// Execute the Action array sequentially with Non-UI-Threads.
         /// Action配列を、非UIスレッドで順次実行する。
         /// </summary>
         /// <param name="actions"></param>
@@ -339,435 +750,5 @@ namespace Xb.App
         }
 
         #endregion
-
-
-        /// <summary>
-        /// UI-Thread TaskScheduler
-        /// UIスレッドのタスクスケジューラ
-        /// </summary>
-        private static TaskScheduler _uiTaskScheduler = null;
-
-        /// <summary>
-        /// UI-Thread ID
-        /// UIスレッドID
-        /// </summary>
-        private static int _uiThreadId = -1;
-
-
-        /// <summary>
-        /// Initialize
-        /// 初期化処理
-        /// </summary>
-        /// <remarks>
-        /// ** MAKE SURE to execute this with UI-THREAD. **
-        /// </remarks>
-        public static void Init()
-        {
-            try
-            {
-                //Get UI-Thread infomation
-                Job._uiThreadId = Thread.CurrentThread.ManagedThreadId;
-                Job._uiTaskScheduler = TaskScheduler.FromCurrentSynchronizationContext();
-                Xb.Util.Out($"UI Thread ID = {Job._uiThreadId}");
-
-                //Start JobInfo-Manager
-                Job.InitJobInfo();
-
-                //Start Task-Validation Timer
-                Job.IsDumpTaskValidation = true;
-            }
-            catch (Exception ex)
-            {
-                Xb.Util.Out(ex);
-                throw;
-            }
-        }
-
-
-        /// <summary>
-        /// Whether the current thread is a UI thread.
-        /// カレントスレッドがUIスレッドか否かを判定する。
-        /// </summary>
-        /// <returns></returns>
-        public static bool IsUIThread
-        {
-            get
-            {
-                try
-                {
-                    return (Thread.CurrentThread.ManagedThreadId == Job._uiThreadId);
-                }
-                catch (Exception ex)
-                {
-                    Xb.Util.Out(ex);
-                    throw;
-                }
-            }
-        }
-
-
-        /// <summary>
-        /// Execute a job without return value.
-        /// 戻り値の無いジョブを実行する。
-        /// </summary>
-        /// <param name="action"></param>
-        /// <param name="isExecUiThread"></param>
-        /// <param name="jobName"></param>
-        /// <param name="cancellation"></param>
-        /// <returns></returns>
-        public static async Task Run(Action action
-                                   , bool isExecUiThread
-                                   , string jobName = null
-                                   , CancellationTokenSource cancellation = null)
-        {
-            try
-            {
-                var callerName = action.Target?.GetType().Name ?? "";
-                var startId = Job.InfoStore.Instance?.Start(jobName, callerName);
-
-                try
-                {
-                    if (isExecUiThread && Job.IsUIThread)
-                    {
-                        //UIスレッド指定で、かつ現在UIスレッドのとき、そのまま実行する。
-                        try
-                        {
-                            Job.InfoStore.Instance?.SetThreadId(startId);
-                            action.Invoke();
-                        }
-                        catch (Exception ex)
-                        {
-                            Xb.Util.Out(ex);
-                            Job.InfoStore.Instance?.ErrorEnd(startId);
-                            throw;
-                        }
-                        Job.InfoStore.Instance?.End(startId);
-                        return;
-                    }
-
-                    var innerAction = new Action(() =>
-                    {
-                        try
-                        {
-                            Job.InfoStore.Instance?.SetThreadId(startId);
-                            action.Invoke();
-                        }
-                        catch (Exception ex)
-                        {
-                            Xb.Util.Out(ex);
-                            Job.InfoStore.Instance?.ErrorEnd(startId);
-                            throw;
-                        }
-                    });
-
-                    //Task.Startは、スケジュールが必要な場合以外は使用しない。
-                    //※UIスレッドが開いているとき、UIスレッドを使ってしまう現象があった。
-                    //https://blogs.msdn.microsoft.com/pfxteam/2010/06/13/task-factory-startnew-vs-new-task-start/
-                    if (isExecUiThread)
-                    {
-                        var task = (cancellation == null)
-                                        ? new Task(innerAction)
-                                        : new Task(innerAction, cancellation.Token);
-
-                        task.Start(Job._uiTaskScheduler);
-
-                        await task.ConfigureAwait(false);
-
-                        task = null;
-                    }
-                    else
-                    {
-                        var task = (cancellation == null)
-                                        ? Task.Run(innerAction)
-                                        : Task.Run(innerAction, cancellation.Token);
-
-                        await task.ConfigureAwait(false);
-
-                        task = null;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Xb.Util.Out(ex);
-                    throw;
-                }
-
-                Job.InfoStore.Instance?.End(startId);
-            }
-            catch (Exception ex)
-            {
-                Xb.Util.Out(ex);
-                throw;
-            }
-        }
-
-
-        /// <summary>
-        /// Execute a job with return value.
-        /// 戻り値付きジョブを実行する。
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="action"></param>
-        /// <param name="isExecUiThread"></param>
-        /// <param name="jobName"></param>
-        /// <param name="cancellation"></param>
-        /// <returns></returns>
-        public static async Task<T> Run<T>(Func<T> action
-                                         , bool isExecUiThread
-                                         , string jobName = null
-                                         , CancellationTokenSource cancellation = null)
-        {
-            try
-            {
-                var callerName = action.Target?.GetType().Name ?? "";
-                var startId = Job.InfoStore.Instance?.Start(jobName, callerName);
-
-                var result = default(T);
-                try
-                {
-                    if (isExecUiThread && Job.IsUIThread)
-                    {
-                        //UIスレッド指定で、かつ現在UIスレッドのとき、そのまま実行する。
-                        try
-                        {
-                            Job.InfoStore.Instance?.SetThreadId(startId);
-                            result = action.Invoke();
-                        }
-                        catch (Exception ex)
-                        {
-                            Xb.Util.Out(ex);
-                            Job.InfoStore.Instance?.ErrorEnd(startId);
-                            throw;
-                        }
-                        Job.InfoStore.Instance?.End(startId);
-                        return result;
-                    }
-
-                    var innerAction = new Func<T>(() =>
-                    {
-                        try
-                        {
-                            Job.InfoStore.Instance?.SetThreadId(startId);
-                            return action.Invoke();
-                        }
-                        catch (Exception ex)
-                        {
-                            Xb.Util.Out(ex);
-                            Job.InfoStore.Instance?.ErrorEnd(startId);
-                            throw;
-                        }
-                    });
-
-                    //Task.Startは、スケジュールが必要な場合以外は使用しない。
-                    //※UIスレッドが開いているとき、UIスレッドを使ってしまう現象があった。
-                    //https://blogs.msdn.microsoft.com/pfxteam/2010/06/13/task-factory-startnew-vs-new-task-start/
-                    if (isExecUiThread)
-                    {
-                        var task = (cancellation == null)
-                                        ? new Task<T>(innerAction)
-                                        : new Task<T>(innerAction, cancellation.Token);
-
-                        task.Start(Job._uiTaskScheduler);
-
-                        result = await task.ConfigureAwait(false);
-
-                        task = null;
-                    }
-                    else
-                    {
-                        var task = (cancellation == null)
-                                        ? Task.Run(innerAction)
-                                        : Task.Run(innerAction, cancellation.Token);
-
-                        result = await task.ConfigureAwait(false);
-
-                        task = null;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Xb.Util.Out(ex);
-                    throw;
-                }
-
-                Job.InfoStore.Instance?.End(startId);
-
-                return result;
-            }
-            catch (Exception ex)
-            {
-                Xb.Util.Out(ex);
-                throw;
-            }
-        }
-
-
-        /// <summary>
-        /// Execute the passed Action asynchronously in Non-UI-Thread.
-        /// 渡し値Actionを非UIスレッドで非同期実行する。
-        /// </summary>
-        /// <param name="action"></param>
-        /// <param name="jobName"></param>
-        public static void Run(Action action, string jobName = null)
-        {
-            try
-            {
-                Job.Run(action, false, jobName).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                Xb.Util.Out(ex);
-                throw;
-            }
-        }
-
-
-        /// <summary>
-        /// Execute the passed Action asynchronously in UI-Thread.
-        /// 渡し値ActionをUIスレッドで非同期実行する。
-        /// </summary>
-        /// <param name="action"></param>
-        /// <param name="jobName"></param>
-        /// <returns></returns>
-        public static void RunUI(Action action, string jobName = null)
-        {
-            try
-            {
-                Job.Run(action, true, jobName).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                Xb.Util.Out(ex);
-                throw;
-            }
-        }
-
-
-        /// <summary>
-        /// Delayed Execute the passed Action asynchronously in Non-UI-Thread.
-        /// 渡し値Actionを非UIスレッドで遅延つき非同期実行する。
-        /// </summary>
-        /// <param name="action"></param>
-        /// <param name="msec"></param>
-        /// <param name="jobName"></param>
-        public static void DelayedRun(Action action, int msec, string jobName = null)
-        {
-            try
-            {
-                Job.RunSerial(
-                    Job.CreateDelay(msec),
-                    Job.CreateJob(action, false, jobName)
-                ).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                Xb.Util.Out(ex);
-                throw;
-            }
-        }
-
-
-        /// <summary>
-        /// Delayed Execute the passed Action asynchronously in UI-Thread.
-        /// 渡し値ActionをUIスレッドで非同期実行する。
-        /// </summary>
-        /// <param name="action"></param>
-        /// <param name="msec"></param>
-        /// <param name="jobName"></param>
-        /// <returns></returns>
-        public static void DelayedRunUI(Action action, int msec, string jobName = null)
-        {
-            try
-            {
-                Job.RunSerial(
-                    Job.CreateDelay(msec),
-                    Job.CreateJob(action, true, jobName)
-                ).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                Xb.Util.Out(ex);
-                throw;
-            }
-        }
-
-
-        /// <summary>
-        /// Synchronously Execute the passed Action in Non-UI-Thread.
-        /// 渡し値Actionを非UIスレッドで同期的に実行する。
-        /// </summary>
-        /// <param name="action"></param>
-        /// <param name="jobName"></param>
-        public static void RunSynced(Action action, string jobName = null)
-        {
-            try
-            {
-                Job.Run(action, false, jobName).ConfigureAwait(false).GetAwaiter().GetResult();
-            }
-            catch (Exception ex)
-            {
-                Xb.Util.Out(ex);
-                throw;
-            }
-        }
-
-
-        /// <summary>
-        /// Synchronously Execute the passed Action in Non-UI-Thread.
-        /// 渡し値Actionを、UIスレッドで同期的に実行する。
-        /// </summary>
-        /// <param name="action"></param>
-        /// <param name="jobName"></param>
-        public static void RunUISynced(Action action, string jobName = null)
-        {
-            try
-            {
-                Job.Run(action, true, jobName).ConfigureAwait(false).GetAwaiter().GetResult();
-            }
-            catch (Exception ex)
-            {
-                Xb.Util.Out(ex);
-                throw;
-            }
-        }
-
-
-        /// <summary>
-        /// Wait for specified milliseconds.
-        /// 指定ミリ秒待つ
-        /// </summary>
-        /// <param name="msec"></param>
-        /// <returns></returns>
-        public static async Task Wait(int msec)
-        {
-            try
-            {
-                await Task.Delay(msec).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                Xb.Util.Out(ex);
-                throw;
-            }
-        }
-
-
-        /// <summary>
-        /// Synchronously Wait for specified milliseconds.
-        /// 指定ミリ秒を同期的に待つ
-        /// </summary>
-        /// <param name="msec"></param>
-        public static void WaitSynced(int msec)
-        {
-            try
-            {
-                Job.Wait(msec).GetAwaiter().GetResult();
-            }
-            catch (Exception ex)
-            {
-                Xb.Util.Out(ex);
-                throw;
-            }
-        }
     }
 }

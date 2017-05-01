@@ -59,8 +59,8 @@
     <Compile Include="..\Xb.App.Job.STD1.3\Xb\App\Job\Info.cs">
       <Link>Xb\App\Job\Info.cs</Link>
     </Compile>
-    <Compile Include="..\Xb.App.Job.STD1.3\Xb\App\Job\InfoStore.cs">
-      <Link>Xb\App\Job\InfoStore.cs</Link>
+    <Compile Include="..\Xb.App.Job.STD1.3\Xb\App\Job\Monitor.cs">
+      <Link>Xb\App\Job\Monitor.cs</Link>
     </Compile>
   </ItemGroup>
   <ItemGroup>

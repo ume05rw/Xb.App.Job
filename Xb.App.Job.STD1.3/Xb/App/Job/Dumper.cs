@@ -27,7 +27,7 @@ namespace Xb.App
             /// Create Instance(Singleton)
             /// </summary>
             /// <returns></returns>
-            public static Job.Dumper Create()
+            private static Job.Dumper Create()
             {
                 try
                 {
@@ -44,7 +44,7 @@ namespace Xb.App
             /// <summary>
             /// Dispose Instance
             /// </summary>
-            public static void DisposeInstance()
+            private static void DisposeInstance()
             {
                 Job.Dumper._instance?.Dispose();
                 Job.Dumper._instance = null;
@@ -55,7 +55,7 @@ namespace Xb.App
             /// Default dump timer interval
             /// デフォルトのダンプタイマー間隔
             /// </summary>
-            private const int DefaultTimerSpanMsec = 30000;
+            private const int DefaultTimerIntervalMsec = 30000;
 
 
             /// <summary>
@@ -128,7 +128,7 @@ namespace Xb.App
             /// Time interval of dump output
             /// ダンプ出力の時間間隔
             /// </summary>
-            public int TimerSpanMsec { get; set; }
+            public int TimerIntervalMsec { get; set; }
 
 
             /// <summary>
@@ -163,7 +163,7 @@ namespace Xb.App
             /// Constructor
             /// コンストラクタ
             /// </summary>
-            private Dumper(int timerSpanMsec = Job.Dumper.DefaultTimerSpanMsec)
+            private Dumper(int timerSpanMsec = Job.Dumper.DefaultTimerIntervalMsec)
             {
                 this.SetTimerInterval(timerSpanMsec);
 
@@ -177,8 +177,8 @@ namespace Xb.App
             /// <param name="msec"></param>
             public void SetTimerInterval(int msec)
             {
-                this.TimerSpanMsec = (msec <= 0)
-                    ? Job.Dumper.DefaultTimerSpanMsec
+                this.TimerIntervalMsec = (msec <= 0)
+                    ? Job.Dumper.DefaultTimerIntervalMsec
                     : msec;
             }
 
@@ -199,7 +199,7 @@ namespace Xb.App
                         {
                             //ステータス出力
                             this.Dump();
-                            Job.WaitSynced(this.TimerSpanMsec);
+                            Job.WaitSynced(this.TimerIntervalMsec);
                         }
                         catch (Exception)
                         {
@@ -223,7 +223,7 @@ namespace Xb.App
                     //定期出力とタスク検証が、どちらも出力内容が無いとき、
                     //なにもしないで終わる。
                     if (!Job.Dumper.IsDumpStatus
-                        && (Job.InfoStore.Instance == null
+                        && (Job.Monitor.Instance == null
                             || !Job.Dumper.IsDumpTaskValidation))
                         return;
 
@@ -232,12 +232,12 @@ namespace Xb.App
                     var suspiciousDump = new string[] { };
 
                     //稼働中タスク情報フラグがONのとき、取得する。
-                    if (Job.Dumper.IsDumpStatus && Job.InfoStore.Instance != null)
-                        infoDump = Job.InfoStore.Instance.GetInfoDump();
+                    if (Job.Dumper.IsDumpStatus && Job.Monitor.Instance != null)
+                        infoDump = Job.Monitor.Instance.GetStatus();
 
                     //タスク検証情報フラグがONのとき、取得する。
-                    if (Job.Dumper.IsDumpTaskValidation && Job.InfoStore.Instance != null)
-                        suspiciousDump = Job.InfoStore.Instance.GetSuspiciousDump();
+                    if (Job.Dumper.IsDumpTaskValidation && Job.Monitor.Instance != null)
+                        suspiciousDump = Job.Monitor.Instance.GetValidation();
 
                     //出力対象が無い場合、なにもしないで終わる。
                     if (!Job.Dumper.IsDumpStatus 

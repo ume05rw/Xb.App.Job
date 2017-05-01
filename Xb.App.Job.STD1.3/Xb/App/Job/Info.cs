@@ -71,7 +71,7 @@ namespace Xb.App
             /// 状態情報文字列
             /// </summary>
             public string State
-                => $"ThID: {this.ThreadId.ToString().PadLeft(5)},  StartTime: {this.StartTime:HH:mm:ss.fff},  ProcTime:{(DateTime.Now - this.StartTime).TotalSeconds.ToString("F3").PadLeft(10)} sec,  ActiveThreads: {Job.InfoStore.Instance?.OnWork.ToString().PadLeft(3)}, JobName: {this.JobName.PadRight(25)} CalledClass: {this.CalledClassName}";
+                => $"ThID: {this.ThreadId.ToString().PadLeft(5)},  StartTime: {this.StartTime:HH:mm:ss.fff},  ProcTime:{(DateTime.Now - this.StartTime).TotalSeconds.ToString("F3").PadLeft(10)} sec,  ActiveThreads: {Job.Monitor.Instance?.OnWork.ToString().PadLeft(3)}, JobName: {this.JobName.PadRight(25)} CalledClass: {this.CalledClassName}";
 
 
 
