@@ -45,18 +45,25 @@ ex) Exec the serial task with CancelToken.
     
     var canceller = new CancellationTokenSource();
     
-    Job.RunSerial(
-        canceller,
-        Job.CreateDelay(400),
-        Job.CreateJob(() => 
-        {
-            //Task1
-        }),
-        Job.CreateJob(() => 
-        {
-            //Task2
-        })
-    );
+    try
+    {
+        Job.RunSerial(
+            canceller,
+            Job.CreateDelay(400),
+            Job.CreateJob(() => 
+            {
+                //Task1 exec on UI-Thread.
+            }, true),
+            Job.CreateJob(() => 
+            {
+                //Task2 exec on Non-UI-Thread.
+            }, false)
+        );
+    }
+    catch (OperationCanceledException)
+    {
+        //Canceled action.
+    }
 
 Namespace and Methods are...
 
