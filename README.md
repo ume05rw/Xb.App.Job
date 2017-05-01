@@ -18,10 +18,9 @@ Supports .NET4.5.1, .NET Standard1.3
 [Xb.Core](https://www.nuget.org/packages/Xb.Core/)  
 
 ## Usage
-1. ~~[Add NuGet Package](https://www.nuget.org/packages/Xb.App.Job/) to your project.~~ -> Not Ready.  
-  Clone this project, and add a reference this to your project.
+1. [Add NuGet Package](https://www.nuget.org/packages/Xb.App.Job/) to your project.  
 2. Call "Xb.App.Job.Init()" with UI-THREAD, to Initialize.
-3. Execute Xb.App.Job.Run () instead of Task.Run ().
+3. Execute Xb.App.Job.Run() instead of Task.Run().
 4. See your Console, Dumped a Task Info.
 5. Call Static Methods / Properties Xb.App.Job.Any().
   
