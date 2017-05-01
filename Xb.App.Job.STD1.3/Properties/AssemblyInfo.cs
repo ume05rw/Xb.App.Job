@@ -7,7 +7,7 @@ using System.Runtime.InteropServices;
 // アセンブリに関連付けられている情報を変更するには、
 // これらの属性値を変更してください。
 [assembly: AssemblyTitle("Xb.App.Job")]
-[assembly: AssemblyDescription("Ready to Xamarin & .NET Core, Thread.Task Replacer Implementation. Dump task lyfecycle, Detect Deadlock suspicious thread.")]
+[assembly: AssemblyDescription("Ready to Xamarin & .NET Core, Thread.Task Replacer Implementation. Dump task lyfecycle, Detect zombie thread.")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Do-Be's")]
 [assembly: AssemblyProduct("Xb.App.Job")]
