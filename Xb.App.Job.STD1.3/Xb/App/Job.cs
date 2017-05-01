@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -133,7 +134,7 @@ namespace Xb.App
                 if (!Job.Dumper.IsWorking)
                     throw new InvalidOperationException("Console-Dump Timer is not working.");
 
-                if (value <= 1000)
+                if (value < 1000)
                     throw new ArgumentException("Too Tiny Interval");
 
                 Job.Dumper.Instance.TimerIntervalMsec = value;

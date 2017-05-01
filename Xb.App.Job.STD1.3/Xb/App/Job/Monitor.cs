@@ -15,7 +15,7 @@ namespace Xb.App
         public sealed class Monitor : IDisposable
         {
             //Singleton実装
-            private static Job.Monitor _instance;
+            private static Job.Monitor _instance = null;
 
             /// <summary>
             /// Job.InfoStore Instance
@@ -94,19 +94,19 @@ namespace Xb.App
             /// Job.Info Array
             /// ジョブ開始番号に対するInfoクラスの連想配列
             /// </summary>
-            private Dictionary<long, Job.Info> _jobs = new Dictionary<long, Job.Info>();
+            private Dictionary<long, Job.Info> _jobs;
 
             /// <summary>
             /// Number of started jobs
             /// 開始したジョブ数
             /// </summary>
-            public long Started { get; private set; } = 0;
+            public long Started { get; private set; }
 
             /// <summary>
             /// Number of jobs ended(Include abnormally terminated jobs)
             /// 終了したジョブ数(異常終了したジョブも含まれる)
             /// </summary>
-            public long Ended { get; private set; } = 0;
+            public long Ended { get; private set; }
 
             /// <summary>
             /// Number of active jobs
@@ -136,6 +136,9 @@ namespace Xb.App
             private Monitor(bool isWorkingJobOnly = true)
             {
                 this.IsWorkingJobOnly = isWorkingJobOnly;
+                this._jobs = new Dictionary<long, Job.Info>();
+                this.Started = 0;
+                this.Ended = 0;
             }
 
 
@@ -232,9 +235,10 @@ namespace Xb.App
                         if (this._jobs.ContainsKey(idx))
                         {
                             var info = this._jobs[idx];
+                            info.End();
                             Xb.Util.Out($"Job.Run Ended   - {info.State}");
 
-                            if (!this.IsWorkingJobOnly)
+                            if (this.IsWorkingJobOnly)
                             {
                                 this._jobs.Remove(idx);
                                 info.Dispose();
@@ -278,9 +282,10 @@ namespace Xb.App
                         if (this._jobs.ContainsKey(idx))
                         {
                             var info = this._jobs[idx];
+                            info.End();
                             Xb.Util.Out($"Job.Run ### ERROR-END ### {info.State}");
 
-                            if (!this.IsWorkingJobOnly)
+                            if (this.IsWorkingJobOnly)
                             {
                                 this._jobs.Remove(idx);
                                 info.Dispose();
@@ -400,7 +405,7 @@ namespace Xb.App
                         {
                             "",
                             $"------------------------------------------------------------",
-                            $"- Deadlock Tasks ",
+                            $"- Deadlock Suspicious Tasks",
                         });
                     }
 
@@ -423,7 +428,7 @@ namespace Xb.App
                         {
                             $"",
                             $"------------------------------------------------------------",
-                            $"- Heavy Tasks",
+                            $"- Long Running Tasks",
                         });
                         heavyLines.AddRange(
                             heavyTargets.Select(j => $"     { (baseTime - j.StartTime).TotalSeconds.ToString("#").PadRight(5)  } sec  - {j.State}")

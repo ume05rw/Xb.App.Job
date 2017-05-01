@@ -7,7 +7,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Xb.App.Job.STD1.3", "Xb.App
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Xb.App.Job.FW4.5.1", "Xb.App.Job.FW4.5.1\Xb.App.Job.FW4.5.1.csproj", "{1BA40FAF-B449-424C-AF3B-0C412546CD18}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestXb.App.Job", "TestXb.App.Job\TestXb.App.Job.csproj", "{4E8F0213-C75C-493D-907A-066B566B8B34}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestFormXb.App.Job", "TestFormXb.App.Job\TestFormXb.App.Job.csproj", "{A53C5B6D-9066-4F4E-83B4-45D6921ADE89}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -23,10 +23,10 @@ Global
 		{1BA40FAF-B449-424C-AF3B-0C412546CD18}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1BA40FAF-B449-424C-AF3B-0C412546CD18}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1BA40FAF-B449-424C-AF3B-0C412546CD18}.Release|Any CPU.Build.0 = Release|Any CPU
-		{4E8F0213-C75C-493D-907A-066B566B8B34}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{4E8F0213-C75C-493D-907A-066B566B8B34}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{4E8F0213-C75C-493D-907A-066B566B8B34}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{4E8F0213-C75C-493D-907A-066B566B8B34}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A53C5B6D-9066-4F4E-83B4-45D6921ADE89}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A53C5B6D-9066-4F4E-83B4-45D6921ADE89}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A53C5B6D-9066-4F4E-83B4-45D6921ADE89}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A53C5B6D-9066-4F4E-83B4-45D6921ADE89}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

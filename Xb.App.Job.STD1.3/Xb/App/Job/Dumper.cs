@@ -16,7 +16,7 @@ namespace Xb.App
         public sealed class Dumper : IDisposable
         {
             //Singleton実装
-            private static Job.Dumper _instance;
+            private static Job.Dumper _instance = null;
 
             /// <summary>
             /// Job.Dumper Instance
