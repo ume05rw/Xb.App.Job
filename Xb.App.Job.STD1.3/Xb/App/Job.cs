@@ -163,6 +163,13 @@ namespace Xb.App
         {
             try
             {
+                //キャンセル指示済のとき、何も実行せず終了する。
+                if (cancellation != null
+                    && cancellation.IsCancellationRequested)
+                {
+                    throw new OperationCanceledException("Task Canceled.");
+                }
+
                 var callerName = action.Target?.GetType().Name ?? "";
                 var startId = Job.Monitor.Instance?.Start(jobName, callerName);
 
@@ -260,6 +267,13 @@ namespace Xb.App
         {
             try
             {
+                //キャンセル指示済のとき、何も実行せず終了する。
+                if (cancellation != null
+                    && cancellation.IsCancellationRequested)
+                {
+                    throw new OperationCanceledException("Task Canceled.");
+                }
+
                 var callerName = action.Target?.GetType().Name ?? "";
                 var startId = Job.Monitor.Instance?.Start(jobName, callerName);
 
@@ -268,6 +282,13 @@ namespace Xb.App
                 {
                     if (isExecUiThread && Job.IsUIThread)
                     {
+                        //キャンセル指示済のとき、何も実行せず終了する。
+                        if (cancellation != null
+                            && cancellation.IsCancellationRequested)
+                        {
+                            throw new OperationCanceledException("Task Canceled.");
+                        }
+
                         //UIスレッド指定で、かつ現在UIスレッドのとき、そのまま実行する。
                         try
                         {
@@ -627,6 +648,13 @@ namespace Xb.App
 
                 foreach (var job in jobs)
                 {
+                    //キャンセル指示済のとき、何も実行せず終了する。
+                    if (cancellation != null
+                        && cancellation.IsCancellationRequested)
+                    {
+                        throw new OperationCanceledException("Task Canceled.");
+                    }
+
                     if (job.DelayMSec > 0)
                         await Job.Wait(job.DelayMSec);
                     else
@@ -712,6 +740,14 @@ namespace Xb.App
             try
             {
                 await Job.RunSerial(cancellation, jobs);
+
+                //キャンセル指示済のとき、何も実行せず終了する。
+                if (cancellation != null
+                    && cancellation.IsCancellationRequested)
+                {
+                    throw new OperationCanceledException("Task Canceled.");
+                }
+
                 return await Job.Run<T>(lastJob
                                       , isUiThreadLastJob
                                       , "Job.RunSerial"
@@ -739,6 +775,7 @@ namespace Xb.App
             try
             {
                 await Job.RunSerial(null, jobs);
+
                 return await Job.Run<T>(lastJob
                                       , false
                                       , "Job.RunSerial");

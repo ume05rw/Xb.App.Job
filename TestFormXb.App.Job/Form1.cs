@@ -54,6 +54,8 @@ namespace TestFormXb
             await this.RunSerialTTest();
 
             await this.RunSerialTCancelTest();
+
+            MessageBox.Show("おわりやで");
         }
 
 
@@ -267,7 +269,7 @@ namespace TestFormXb
                 var execCountNonUi = 0;
                 var execCountUi = 0;
 
-                for (var i = 0; i < 1000; i++)
+                for (var i = 0; i < 100; i++)
                 {
                     await Job.Run(() =>
                     {
@@ -276,7 +278,7 @@ namespace TestFormXb
                     }, false);
                 }
 
-                for (var i = 0; i < 1000; i++)
+                for (var i = 0; i < 100; i++)
                 {
                     await Job.Run(() =>
                     {
@@ -285,8 +287,8 @@ namespace TestFormXb
                     }, true);
                 }
 
-                Assert.AreEqual(execCountNonUi, 1000, "RunTestTest");
-                Assert.AreEqual(execCountUi, 1000, "RunTestTest");
+                Assert.AreEqual(execCountNonUi, 100, "RunTestTest");
+                Assert.AreEqual(execCountUi, 100, "RunTestTest");
             }
             catch (Exception ex)
             {
@@ -300,17 +302,14 @@ namespace TestFormXb
             try
             {
                 var execCountNonUi = 0;
-                var execCountUi = 0;
                 var cancellerNonUi = new CancellationTokenSource();
-                var cancellerUi = new CancellationTokenSource();
-
-                for (var i = 0; i < 1000; i++)
+                for (var i = 0; i < 100; i++)
                 {
                     try
                     {
                         await Job.Run(() =>
                         {
-                            if (execCountNonUi >= 500)
+                            if (execCountNonUi >= 50)
                             {
                                 cancellerNonUi.Cancel(true);
                             }
@@ -319,19 +318,20 @@ namespace TestFormXb
                             Assert.IsFalse(Job.IsUIThread, "RunTestCancelTest");
                         }, false, "RunTestCancelTest", cancellerNonUi);
                     }
-                    catch (Exception)
+                    catch (OperationCanceledException)
                     {
                     }
-
                 }
 
-                for (var i = 0; i < 1000; i++)
+                var execCountUi = 0;
+                var cancellerUi = new CancellationTokenSource();
+                for (var i = 0; i < 100; i++)
                 {
                     try
                     {
                         await Job.Run(() =>
                         {
-                            if (execCountUi >= 500)
+                            if (execCountUi >= 50)
                             {
                                 cancellerUi.Cancel(true);
                             }
@@ -340,13 +340,13 @@ namespace TestFormXb
                             Assert.IsTrue(Job.IsUIThread, "RunTestCancelTest");
                         }, true, "RunTestCancelTest", cancellerUi);
                     }
-                    catch (Exception)
+                    catch (OperationCanceledException)
                     {
                     }
                 }
 
-                Assert.AreEqual(execCountNonUi, 501, "RunTestCancelTest");
-                Assert.AreEqual(execCountUi, 501, "RunTestCancelTest");
+                Assert.AreEqual(execCountNonUi, 51, "RunTestCancelTest");
+                Assert.AreEqual(execCountUi, 51, "RunTestCancelTest");
             }
             catch (Exception ex)
             {
@@ -359,7 +359,37 @@ namespace TestFormXb
         {
             try
             {
+                var execCountNonUi = 0;
+                var execCountUi = 0;
 
+                for (var i = 0; i < 100; i++)
+                {
+                    var res = await Job.Run<int>(() =>
+                    {
+                        execCountNonUi++;
+                        Assert.IsFalse(Job.IsUIThread, "RunTestTTest");
+
+                        return execCountNonUi;
+                    }, false);
+
+                    Assert.AreEqual(res, execCountNonUi, "RunTestTTest");
+                }
+
+                for (var i = 0; i < 100; i++)
+                {
+                    var res = await Job.Run<int>(() =>
+                    {
+                        execCountUi++;
+                        Assert.IsTrue(Job.IsUIThread, "RunTestTTest");
+
+                        return execCountUi;
+                    }, true);
+
+                    Assert.AreEqual(res, execCountUi, "RunTestTTest");
+                }
+
+                Assert.AreEqual(execCountNonUi, 100, "RunTestTTest");
+                Assert.AreEqual(execCountUi, 100, "RunTestTTest");
             }
             catch (Exception ex)
             {
@@ -372,7 +402,63 @@ namespace TestFormXb
         {
             try
             {
+                var execCountNonUi = 0;
+                var cancellerNonUi = new CancellationTokenSource();
+                for (var i = 0; i < 100; i++)
+                {
+                    try
+                    {
+                        var res = await Job.Run<int>(() =>
+                        {
+                            if (execCountNonUi >= 50)
+                            {
+                                cancellerNonUi.Cancel(true);
+                            }
 
+                            execCountNonUi++;
+                            Assert.IsFalse(Job.IsUIThread, "RunTestTCancelTest");
+
+                            return execCountNonUi;
+
+                        }, false, "RunTestTCancelTest", cancellerNonUi);
+
+                        Assert.AreEqual(res, execCountNonUi, "RunTestTCancelTest");
+                    }
+                    catch (OperationCanceledException)
+                    {
+                    }
+
+                }
+
+                var execCountUi = 0;
+                var cancellerUi = new CancellationTokenSource();
+                for (var i = 0; i < 100; i++)
+                {
+                    try
+                    {
+                        var res = await Job.Run<int>(() =>
+                        {
+                            if (execCountUi >= 50)
+                            {
+                                cancellerUi.Cancel(true);
+                            }
+
+                            execCountUi++;
+                            Assert.IsTrue(Job.IsUIThread, "RunTestTCancelTest");
+
+                            return execCountUi;
+
+                        }, true, "RunTestTCancelTest", cancellerUi);
+
+                        Assert.AreEqual(res, execCountUi, "RunTestTCancelTest");
+                    }
+                    catch (OperationCanceledException)
+                    {
+                    }
+                }
+
+                Assert.AreEqual(execCountNonUi, 51, "RunTestTCancelTest");
+                Assert.AreEqual(execCountUi, 51, "RunTestTCancelTest");
             }
             catch (Exception ex)
             {
@@ -385,7 +471,48 @@ namespace TestFormXb
         {
             try
             {
+                for (var i = 0; i < 10; i++)
+                {
+                    var jobCount = 0;
+                    var startTime = DateTime.Now;
+                    var doTask1 = false;
+                    var doTask2 = false;
+                    var doTask3 = false;
 
+                    await Job.RunSerial(
+                        Job.CreateJob(() =>
+                        {
+                            jobCount++;
+                            Assert.AreEqual(jobCount, 1);
+                            Assert.IsFalse(Job.IsUIThread, "RunSerialTest");
+                            doTask1 = true;
+
+                        }, false, "RunSerialTest"),
+                        Job.CreateJob(() =>
+                        {
+                            jobCount++;
+                            Assert.AreEqual(jobCount, 2);
+                            Assert.IsTrue(Job.IsUIThread, "RunSerialTest");
+                            doTask2 = true;
+
+                        }, true, "RunSerialTest"),
+                        Job.CreateDelay(500),
+                        Job.CreateJob(() =>
+                        {
+                            jobCount++;
+                            Assert.AreEqual(jobCount, 3);
+                            Assert.IsFalse(Job.IsUIThread, "RunSerialTest");
+                            doTask3 = true;
+
+                        }, false, "RunSerialTest")
+                    );
+                    Assert.AreEqual(jobCount, 3, "RunSerialTest");
+                    Assert.IsTimeOver(startTime, 500, "RunSerialTest");
+
+                    Assert.IsTrue(doTask1, "RunSerialTest");
+                    Assert.IsTrue(doTask2, "RunSerialTest");
+                    Assert.IsTrue(doTask3, "RunSerialTest");
+                }
             }
             catch (Exception ex)
             {
@@ -398,7 +525,59 @@ namespace TestFormXb
         {
             try
             {
+                for (var i = 0; i < 10; i++)
+                {
+                    var jobCount = 0;
+                    var startTime = DateTime.Now;
+                    var canceller = new CancellationTokenSource();
+                    var doTask1 = false;
+                    var doTask2 = false;
+                    var doTask3 = false;
 
+                    try
+                    {
+                        await Job.RunSerial(
+                            canceller,
+                            Job.CreateJob(() =>
+                            {
+                                canceller.Cancel(true);
+
+                                jobCount++;
+                                Assert.AreEqual(jobCount, 1);
+                                Assert.IsFalse(Job.IsUIThread, "RunSerialCancelTest");
+                                doTask1 = true;
+
+                            }, false, "RunSerialCancelTest"),
+                            Job.CreateJob(() =>
+                            {
+                                jobCount++;
+                                Assert.AreEqual(jobCount, 2);
+                                Assert.IsTrue(Job.IsUIThread, "RunSerialCancelTest");
+                                doTask2 = true;
+
+                            }, true, "RunSerialCancelTest"),
+                            Job.CreateDelay(500),
+                            Job.CreateJob(() =>
+                            {
+                                jobCount++;
+                                Assert.AreEqual(jobCount, 3);
+                                Assert.IsFalse(Job.IsUIThread, "RunSerialCancelTest");
+                                doTask3 = true;
+
+                            }, false, "RunSerialCancelTest")
+                        );
+                    }
+                    catch (OperationCanceledException)
+                    {
+                    }
+
+                    Assert.AreEqual(jobCount, 1, "RunSerialCancelTest");
+                    Assert.IsTrue((DateTime.Now - startTime).TotalMilliseconds < 400, "RunSerialCancelTest");
+
+                    Assert.IsTrue(doTask1, "RunSerialCancelTest");
+                    Assert.IsFalse(doTask2, "RunSerialCancelTest");
+                    Assert.IsFalse(doTask3, "RunSerialCancelTest");
+                }
             }
             catch (Exception ex)
             {
@@ -411,7 +590,63 @@ namespace TestFormXb
         {
             try
             {
+                for (var i = 0; i < 10; i++)
+                {
+                    var jobCount = 0;
+                    var startTime = DateTime.Now;
+                    var doTask1 = false;
+                    var doTask2 = false;
+                    var doTask3 = false;
+                    var doTask4 = false;
 
+                    var res = await Job.RunSerial<bool>(
+                        () =>
+                        {
+                            jobCount++;
+                            Assert.AreEqual(jobCount, 4);
+                            Assert.IsTrue(Job.IsUIThread, "RunSerialTTest");
+                            doTask4 = true;
+
+                            return true;
+                        },
+                        true,
+                        null,
+                        Job.CreateJob(() =>
+                        {
+                            jobCount++;
+                            Assert.AreEqual(jobCount, 1);
+                            Assert.IsFalse(Job.IsUIThread, "RunSerialTTest");
+                            doTask1 = true;
+
+                        }, false, "RunSerialTTest"),
+                        Job.CreateJob(() =>
+                        {
+                            jobCount++;
+                            Assert.AreEqual(jobCount, 2);
+                            Assert.IsTrue(Job.IsUIThread, "RunSerialTTest");
+                            doTask2 = true;
+
+                        }, true, "RunSerialTTest"),
+                        Job.CreateDelay(500),
+                        Job.CreateJob(() =>
+                        {
+                            jobCount++;
+                            Assert.AreEqual(jobCount, 3);
+                            Assert.IsFalse(Job.IsUIThread, "RunSerialTTest");
+                            doTask3 = true;
+
+                        }, false, "RunSerialTTest")
+                    );
+
+                    Assert.AreEqual(jobCount, 4, "RunSerialTTest");
+                    Assert.IsTimeOver(startTime, 500, "RunSerialTTest");
+
+                    Assert.IsTrue(res);
+                    Assert.IsTrue(doTask1, "RunSerialTTest");
+                    Assert.IsTrue(doTask2, "RunSerialTTest");
+                    Assert.IsTrue(doTask3, "RunSerialTTest");
+                    Assert.IsTrue(doTask4, "RunSerialTTest");
+                }
             }
             catch (Exception ex)
             {
@@ -424,7 +659,72 @@ namespace TestFormXb
         {
             try
             {
+                for (var i = 0; i < 10; i++)
+                {
+                    var jobCount = 0;
+                    var startTime = DateTime.Now;
+                    var canceller = new CancellationTokenSource();
+                    var doTask1 = false;
+                    var doTask2 = false;
+                    var doTask3 = false;
+                    var doTask4 = false;
+                    var lastResult = false;
+                    try
+                    {
+                        lastResult = await Job.RunSerial<bool>(
+                            () =>
+                            {
+                                jobCount++;
+                                Assert.AreEqual(jobCount, 4);
+                                Assert.IsTrue(Job.IsUIThread, "RunSerialTCancelTest");
+                                doTask4 = true;
 
+                                return true;
+                            },
+                            true,
+                            canceller,
+                            Job.CreateJob(() =>
+                            {
+                                jobCount++;
+                                Assert.AreEqual(jobCount, 1);
+                                Assert.IsFalse(Job.IsUIThread, "RunSerialTCancelTest");
+                                doTask1 = true;
+
+                            }, false, "RunSerialTCancelTest"),
+                            Job.CreateJob(() =>
+                            {
+                                canceller.Cancel(true);
+
+                                jobCount++;
+                                Assert.AreEqual(jobCount, 2);
+                                Assert.IsTrue(Job.IsUIThread, "RunSerialTCancelTest");
+                                doTask2 = true;
+
+                            }, true, "RunSerialTCancelTest"),
+                            Job.CreateDelay(500),
+                            Job.CreateJob(() =>
+                            {
+                                jobCount++;
+                                Assert.AreEqual(jobCount, 3);
+                                Assert.IsFalse(Job.IsUIThread, "RunSerialTCancelTest");
+                                doTask3 = true;
+
+                            }, false, "RunSerialTCancelTest")
+                        );
+                    }
+                    catch (OperationCanceledException)
+                    {
+                    }
+                    
+                    Assert.AreEqual(jobCount, 2, "RunSerialTCancelTest");
+                    Assert.IsTrue((DateTime.Now - startTime).TotalMilliseconds < 400, "RunSerialTCancelTest");
+
+                    Assert.IsFalse(lastResult);
+                    Assert.IsTrue(doTask1, "RunSerialTCancelTest");
+                    Assert.IsTrue(doTask2, "RunSerialTCancelTest");
+                    Assert.IsFalse(doTask3, "RunSerialTCancelTest");
+                    Assert.IsFalse(doTask4, "RunSerialTCancelTest");
+                }
             }
             catch (Exception ex)
             {
