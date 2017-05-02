@@ -42,7 +42,7 @@ namespace Xb.App
             try
             {
                 //Get UI-Thread infomation
-                Job._uiThreadId = Thread.CurrentThread.ManagedThreadId;
+                Job._uiThreadId = System.Environment.CurrentManagedThreadId;
                 Job._uiTaskScheduler = TaskScheduler.FromCurrentSynchronizationContext();
                 Xb.Util.Out($"UI Thread ID = {Job._uiThreadId}");
 
@@ -77,7 +77,7 @@ namespace Xb.App
                     if (Job._uiThreadId == -1)
                         throw new InvalidOperationException("Exec [ Xb.App.Job.Init() ] with UI-Thread.");
 
-                    return (Thread.CurrentThread.ManagedThreadId == Job._uiThreadId);
+                    return (System.Environment.CurrentManagedThreadId == Job._uiThreadId);
                 }
                 catch (Exception ex)
                 {

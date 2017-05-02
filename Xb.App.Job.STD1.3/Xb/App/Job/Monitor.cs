@@ -197,7 +197,7 @@ namespace Xb.App
                         if (this._jobs.ContainsKey(idx))
                         {
                             var info = this._jobs[idx];
-                            info.SetThreadId(Thread.CurrentThread.ManagedThreadId);
+                            info.SetThreadId(System.Environment.CurrentManagedThreadId);
 
                             Xb.Util.Out($"Job.Run Started - {info.State}");
                         }
