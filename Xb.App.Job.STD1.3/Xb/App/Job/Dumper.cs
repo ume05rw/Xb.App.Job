@@ -130,6 +130,10 @@ namespace Xb.App
             /// </summary>
             public int TimerIntervalMsec { get; set; }
 
+            /// <summary>
+            /// 監視タスクのキャンセルトークンソース
+            /// </summary>
+            private CancellationTokenSource _canceller;
 
             /// <summary>
             /// Current Process instance
@@ -188,12 +192,16 @@ namespace Xb.App
             /// </summary>
             private void TimerExec()
             {
+                this._canceller = new CancellationTokenSource();
+
                 ////定期監視ジョブ自体が、終了しないジョブとしてリストアップされてしまうため
                 ////Job.RunでなくTaskを直接使う。
                 //↑見えた方がいいと思うので、これをやめる。
                 Job.Run(() =>
                 {
-                    while (Job.Dumper.IsWorking)
+                    while (Job.Dumper.IsWorking
+                           && this._canceller != null
+                           && !this._canceller.IsCancellationRequested)
                     {
                         try
                         {
@@ -201,13 +209,16 @@ namespace Xb.App
                             this.Dump();
                             Job.WaitSynced(this.TimerIntervalMsec);
                         }
+                        catch (OperationCanceledException)
+                        {
+                            break;
+                        }
                         catch (Exception)
                         {
-                            //throw;
-                            //何が有っても動じない！！
+                            //キャンセル指示以外は、何が有っても動じない！！
                         }
                     }
-                });
+                }, false, "Xb.App.Job.Dumper.Timer", this._canceller).ConfigureAwait(false);
             }
 
 
@@ -338,6 +349,13 @@ namespace Xb.App
                 {
                     if (disposing)
                     {
+                        if (this._canceller != null)
+                        {
+                            this._canceller.Cancel(true);
+                            this._canceller.Dispose();
+                            this._canceller = null;
+                        }
+
                         this._process = null;
                     }
                     disposedValue = true;

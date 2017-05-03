@@ -363,7 +363,8 @@ namespace Xb.App
                     lock (this._jobs)
                     {
                         jobs = this._jobs.Where(p => !p.Value.IsEnded)
-                                         .Select(p => p.Value);
+                                         .Select(p => p.Value)
+                                         .ToArray();
                     }
 
                     var baseTime = DateTime.Now;
@@ -376,17 +377,19 @@ namespace Xb.App
 
                     //スレッドID取得済み、かつ閾値時刻より前に開始したタスクを取得
                     var deadlockTargets = jobs.Where(j => j.ThreadId != -1
-                                                     && j.StartTime <= deadlockLimitTime);
+                                                     && j.StartTime <= deadlockLimitTime)
+                                              .ToArray();
 
                     //タスクのスレッドIDをキー配列とする。
-                    var keys = deadlockTargets.GroupBy(j => j.ThreadId).Select(group => group.Key);
+                    var keys = deadlockTargets.GroupBy(j => j.ThreadId).Select(group => group.Key)
+                                              .ToArray();
 
                     //デッドロックと思しきタスク情報を文字列配列化する。
                     var deadlockLines = new List<string>();
                     foreach (var key in keys)
                     {
                         var infos = deadlockTargets.Where(j => j.ThreadId == key)
-                                                      .OrderBy(j => j.StartTime);
+                                                   .OrderBy(j => j.StartTime);
                         if (infos.Count() <= 1)
                             continue;
 
