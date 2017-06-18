@@ -44,6 +44,8 @@
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Xb\App\Job.cs" />
+    <Compile Include="Xb\App\Job\BackgroundJobManager.cs" />
+    <Compile Include="Xb\App\Job\DelayedOnceJobManager.cs" />
     <Compile Include="Xb\App\Job\Dumper.cs" />
     <Compile Include="Xb\App\Job\Info.cs" />
     <Compile Include="Xb\App\Job\Monitor.cs" />

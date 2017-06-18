@@ -450,12 +450,23 @@ namespace Xb.App
         /// 指定ミリ秒待つ
         /// </summary>
         /// <param name="msec"></param>
+        /// <param name="cancellation"></param>
         /// <returns></returns>
-        public static async Task Wait(int msec)
+        public static async Task Wait(int msec, CancellationTokenSource cancellation = null)
         {
             try
             {
-                await Task.Delay(msec).ConfigureAwait(false);
+                //キャンセル指示済のとき、何も実行せず終了する。
+                if (cancellation != null
+                    && cancellation.IsCancellationRequested)
+                {
+                    throw new OperationCanceledException("Task Canceled.");
+                }
+
+                if (cancellation == null)
+                    await Task.Delay(msec).ConfigureAwait(false);
+                else
+                    await Task.Delay(msec, cancellation.Token).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -470,11 +481,12 @@ namespace Xb.App
         /// 指定ミリ秒を同期的に待つ
         /// </summary>
         /// <param name="msec"></param>
-        public static void WaitSynced(int msec)
+        /// <param name="cancellation"></param>
+        public static void WaitSynced(int msec, CancellationTokenSource cancellation = null)
         {
             try
             {
-                Job.Wait(msec).GetAwaiter().GetResult();
+                Job.Wait(msec, cancellation).GetAwaiter().GetResult();
             }
             catch (Exception ex)
             {
@@ -638,7 +650,7 @@ namespace Xb.App
         /// <param name="cancellation"></param>
         /// <param name="jobs"></param>
         /// <returns></returns>
-        public static async Task RunSerial(CancellationTokenSource cancellation = null
+        public static async Task RunSerial(CancellationTokenSource cancellation
                                          , params Job[] jobs)
         {
             try
@@ -700,9 +712,11 @@ namespace Xb.App
         /// Execute the Action array sequentially with Non-UI-Threads.
         /// Action配列を、非UIスレッドで順次実行する。
         /// </summary>
+        /// <param name="cancellation"></param>
         /// <param name="actions"></param>
         /// <returns></returns>
-        public static async Task RunSerial(params Action[] actions)
+        public static async Task RunSerial(CancellationTokenSource cancellation
+                                         , params Action[] actions)
         {
             try
             {
@@ -712,7 +726,30 @@ namespace Xb.App
                 var jobs = actions.Select(action => Job.CreateJob(action, false, "Job.RunSerial"))
                                   .ToArray();
 
-                await Job.RunSerial(null, jobs);
+                await Job.RunSerial(cancellation, jobs);
+            }
+            catch (Exception ex)
+            {
+                Xb.Util.Out(ex);
+                throw;
+            }
+        }
+
+
+        /// <summary>
+        /// Execute the Action array sequentially with Non-UI-Threads.
+        /// Action配列を、非UIスレッドで順次実行する。
+        /// </summary>
+        /// <param name="actions"></param>
+        /// <returns></returns>
+        public static async Task RunSerial(params Action[] actions)
+        {
+            try
+            {
+                if (actions == null)
+                    return;
+                
+                await Job.RunSerial(null, actions);
             }
             catch (Exception ex)
             {

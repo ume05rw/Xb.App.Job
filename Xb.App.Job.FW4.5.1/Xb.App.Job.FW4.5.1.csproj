@@ -53,6 +53,12 @@
     <Compile Include="..\Xb.App.Job.STD1.3\Xb\App\Job.cs">
       <Link>Xb\App\Job.cs</Link>
     </Compile>
+    <Compile Include="..\Xb.App.Job.STD1.3\Xb\App\Job\BackgroundJobManager.cs">
+      <Link>Xb\App\Job\BackgroundJobManager.cs</Link>
+    </Compile>
+    <Compile Include="..\Xb.App.Job.STD1.3\Xb\App\Job\DelayedOnceJobManager.cs">
+      <Link>Xb\App\Job\DelayedOnceJobManager.cs</Link>
+    </Compile>
     <Compile Include="..\Xb.App.Job.STD1.3\Xb\App\Job\Dumper.cs">
       <Link>Xb\App\Job\Dumper.cs</Link>
     </Compile>
