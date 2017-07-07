@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace Xb.App
 {
@@ -14,6 +15,29 @@ namespace Xb.App
         /// </remarks>
         private class Info : IDisposable
         {
+            /// <summary>
+            /// Job Info Array
+            /// </summary>
+            private static Dictionary<int, Info> ThreadInfos = new Dictionary<int, Info>();
+
+            /// <summary>
+            /// Current Thread's Job Info
+            /// </summary>
+            public static Info ThreadInfo
+            {
+                get
+                {
+                    var threadId = System.Environment.CurrentManagedThreadId;
+
+                    lock (Info.ThreadInfos)
+                        if (Info.ThreadInfos.ContainsKey(threadId))
+                            return Info.ThreadInfos[threadId];
+
+                    // thread created without Xb.App.Job
+                    return null;
+                }
+            }
+
             /// <summary>
             /// Current maximum job ID(=Number of jobs generated so far)
             /// 現在の最大ジョブID(=現在までに生成されたジョブの数)
@@ -61,17 +85,22 @@ namespace Xb.App
             public DateTime EndTime { get; private set; }
 
             /// <summary>
-            /// Thread ID
+            /// Execution Thread ID
             /// スレッドID
             /// </summary>
-            public int ThreadId { get; private set; } = -1;
+            public int ExecThreadId { get; private set; } = -1;
+
+            /// <summary>
+            /// Generator Thread ID
+            /// 呼び出し元スレッドID
+            /// </summary>
+            public int CalledThreadId { get; private set; } = -1;
 
             /// <summary>
             /// Status String
             /// 状態情報文字列
             /// </summary>
-            public string State
-                => $"ThID: {this.ThreadId.ToString().PadLeft(5)},  StartTime: {this.StartTime:HH:mm:ss.fff},  ProcTime:{(DateTime.Now - this.StartTime).TotalSeconds.ToString("F3").PadLeft(10)} sec,  ActiveThreads: {Job.Monitor.Instance?.OnWork.ToString().PadLeft(3)}, JobName: {this.JobName.PadRight(25)} CalledClass: {this.CalledClassName}";
+            public string State => $"ThID: {this.ExecThreadId.ToString().PadLeft(5)},  StartTime: {this.StartTime:HH:mm:ss.fff},  ProcTime:{(DateTime.Now - this.StartTime).TotalSeconds.ToString("F3").PadLeft(10)} sec,  ActiveThreads: {Job.Monitor.Instance?.OnWork.ToString().PadLeft(3)}, JobName: {this.JobName.PadRight(25)} CalledClass: {this.CalledClassName}";
 
 
 
@@ -90,6 +119,16 @@ namespace Xb.App
                 this.CalledClassName = calledClassName;
                 this.IsEnded = false;
                 this.EndTime = DateTime.MaxValue;
+                this.CalledThreadId = System.Environment.CurrentManagedThreadId;
+
+
+                lock(Info.ThreadInfos)
+                {
+                    if (Info.ThreadInfos.ContainsKey(this.CalledThreadId))
+                        Info.ThreadInfos.Remove(this.CalledThreadId);
+
+                    Info.ThreadInfos.Add(this.CalledThreadId, this);
+                }
             }
 
 
@@ -100,7 +139,7 @@ namespace Xb.App
             /// <param name="threadId"></param>
             public void SetThreadId(int threadId)
             {
-                this.ThreadId = threadId;
+                this.ExecThreadId = threadId;
             }
 
 
