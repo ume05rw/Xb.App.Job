@@ -138,7 +138,7 @@ namespace Xb.App
             }
 
             private List<Action> _jobs = new List<Action>();
-            private List<object> _suppressors = new List<object>();
+            private Dictionary<object, string> _suppressors = new Dictionary<object, string>();
 
 
             /// <summary>
@@ -168,7 +168,7 @@ namespace Xb.App
                     return;
 
                 this.IsRunning = true;
-                Xb.Util.Out($"BackgroundJobManager[{this.Name}].Regist - Kick JobManager.");
+                Xb.Util.Out($"BackgroundJobManager[{this.Name}].Regist - Kicked.");
 
                 Job.DelayedRun(() =>
                 {
@@ -192,7 +192,8 @@ namespace Xb.App
                                 while (this.IsSuppressing)
                                 {
                                     Xb.Util.Out($"BackgroundJobManager[{this.Name}] - Waiting Suppress Release, "
-                                              + $"Suppressors Count: {this.SuppressorCount}");
+                                              + $"Suppressors Count: {this.SuppressorCount}, "
+                                              + $"Suppressed By: {this.GetSuppressorNames()}");
                                     Job.WaitSynced(this.SuppressCheckSpanMsec);
                                 }
 
@@ -261,20 +262,30 @@ namespace Xb.App
                 }, this.StartDelayMsec, $"BackgroundJobManager[{this.Name}]");
             }
 
+
             /// <summary>
             /// Suppress job
             /// 処理抑止フラグをセットする。
             /// </summary>
-            public void Suppress(object suppressor)
+            public void Suppress(object suppressorObject, string suppressorName = null)
             {
                 try
                 {
                     lock (this._suppressors)
-                        if (!this._suppressors.Contains(suppressor))
-                            this._suppressors.Add(suppressor);
+                    {
+                        if (!this._suppressors.ContainsKey(suppressorObject))
+                        {
+                            suppressorName = string.IsNullOrEmpty(suppressorName)
+                                ? suppressorObject.GetType().Name
+                                : suppressorName;
 
-                    Xb.Util.Out($"BackgroundJobManager[{this.Name}].Suppress by {suppressor.GetType().Name}, "
-                              + $"Suppressors Count: {this.SuppressorCount} / {(this.IsSuppressing ? "Suppressing" : "Released")}");
+                            this._suppressors.Add(suppressorObject, suppressorName);
+
+                            Xb.Util.Out($"BackgroundJobManager[{this.Name}].Suppress by {suppressorName}: {suppressorObject.GetType().Name}, "
+                                      + $"Suppressors Count: {this.SuppressorCount} / " 
+                                      + $"{(this.IsSuppressing ? $"Suppressed By: {this.GetSuppressorNames()}" : "Released")}");
+                        }
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -282,21 +293,28 @@ namespace Xb.App
                     throw;
                 }
             }
+
 
             /// <summary>
             /// Release suppress
             /// 処理抑止フラグを解除する。
             /// </summary>
-            public void ReleaseSuppress(object suppressor)
+            public void ReleaseSuppress(object suppressorObject)
             {
                 try
                 {
                     lock (this._suppressors)
-                        if (this._suppressors.Contains(suppressor))
-                            this._suppressors.Remove(suppressor);
+                    {
+                        if (this._suppressors.ContainsKey(suppressorObject))
+                        {
+                            var suppressorName = this._suppressors[suppressorObject];
+                            this._suppressors.Remove(suppressorObject);
 
-                    Xb.Util.Out($"BackgroundJobManager[{this.Name}].ReleaseSuppress by {suppressor.GetType().Name}, "
-                              + $"Suppressors Count: {this.SuppressorCount} / {(this.IsSuppressing ? "Suppressing" : "Released")}");
+                            Xb.Util.Out($"BackgroundJobManager[{this.Name}].ReleaseSuppress by {suppressorName}: {suppressorObject.GetType().Name}, "
+                                      + $"Suppressors Count: {this.SuppressorCount} / " 
+                                      + $"{(this.IsSuppressing ? $"Suppressed By: {this.GetSuppressorNames()}" : "Released")}");
+                        }
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -305,17 +323,35 @@ namespace Xb.App
                 }
             }
 
+
             /// <summary>
             /// Whether passing-object is suppressor or not.
             /// </summary>
-            /// <param name="suppressor"></param>
+            /// <param name="targetObject"></param>
             /// <returns></returns>
-            public bool IsSuppressorObject(object suppressor)
+            public bool IsSuppressorObject(object targetObject)
             {
                 var result = false;
 
                 lock (this._suppressors)
-                    result = this._suppressors.Contains(suppressor);
+                    result = this._suppressors.ContainsKey(targetObject);
+
+                return result;
+            }
+
+
+            /// <summary>
+            /// Get suppressing object's Names
+            /// </summary>
+            /// <returns></returns>
+            public string GetSuppressorNames()
+            {
+                var result = "";
+
+                lock (this._suppressors)
+                {
+                    result = string.Join(", ", this._suppressors.Select(p => $"{p.Value}: {p.Key.GetType().Name}").ToArray());
+                }
 
                 return result;
             }

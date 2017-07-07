@@ -19,13 +19,23 @@ namespace Xb.App
         public class DelayedOnceJobManager : IDisposable
         {
             private const int DefaultDelayMsec = 3000;
-            private const int DefaultSleepMsec = 500;
             private Action _delayedAction = null;
 
             /// <summary>
             /// Job execution scheduled time
             /// </summary>
             public DateTime ScheduledTime { get; private set; } = DateTime.MinValue;
+
+            /// <summary>
+            /// Maximum delay limit time
+            /// </summary>
+            /// <remarks>
+            /// When MaxDelayMsec is greater than zero, 
+            /// the action is forcibly executed when this value is exceeded.
+            /// 
+            /// When MaxDelayMsec is less than zero(default), this property is disabled.
+            /// </remarks>
+            public DateTime ScheduleLimitedTime { get; private set; } = DateTime.MinValue;
 
             /// <summary>
             /// Whether job execution scheduled or not.
@@ -38,21 +48,31 @@ namespace Xb.App
             public int DelayMsec { get; set; } = DefaultDelayMsec;
 
             /// <summary>
-            /// Waiting-Sleep span
+            /// Maximun delay time
             /// </summary>
-            public int SleepMsec { get; set; } = DefaultSleepMsec;
-
+            /// <remarks>
+            /// When this value is greater than zero, 
+            /// the action is forcibly executed when ScheduleLimitedTime is exceeded.
+            /// 
+            /// When this value is less than zero(default), the maximum delay limit is disabled.
+            /// At this time, if you continue to run in small increments, 
+            /// the action will not be executed.
+            /// </remarks>
+            public int MaxDelayMsec { get; set; } = 0;
 
             /// <summary>
             /// Constructor
             /// </summary>
             /// <param name="delayedAction"></param>
             /// <param name="delayMsec"></param>
+            /// <param name="maxDelayMsec"></param>
             public DelayedOnceJobManager(Action delayedAction
-                                       , int delayMsec = DefaultDelayMsec)
+                                       , int delayMsec = DefaultDelayMsec
+                                       , int maxDelayMsec = 0)
             {
                 this._delayedAction = delayedAction;
                 this.DelayMsec = delayMsec;
+                this.MaxDelayMsec = maxDelayMsec;
             }
 
 
@@ -68,10 +88,34 @@ namespace Xb.App
 
                 this.IsScheduled = true;
 
+                if (this.MaxDelayMsec > 0)
+                    this.ScheduleLimitedTime = DateTime.Now.AddMilliseconds(this.MaxDelayMsec);
+
                 Job.Run(() =>
                 {
-                    while (this.ScheduledTime > DateTime.Now)
-                        Job.WaitSynced(this.SleepMsec);
+                    while (true)
+                    {
+                        //最後にスケジュールされた時刻を過ぎたとき
+                        if (this.ScheduledTime <= DateTime.Now)
+                            break;
+
+                        //最大遅延時間設定時、かつ最大遅延スケジュール時刻を過ぎたとき
+                        if (this.MaxDelayMsec > 0
+                            && this.ScheduleLimitedTime <= DateTime.Now)
+                            break;
+
+                        //最終スケジュール時刻と最大遅延スケジュール時刻の、小さい方を
+                        //次回検証時刻にする。
+                        var wakeTime = this.ScheduledTime;
+                        if (this.MaxDelayMsec > 0
+                            && this.ScheduledTime > this.ScheduleLimitedTime)
+                            wakeTime = this.ScheduleLimitedTime;
+
+                        //次回検証時刻までの間の時間をMsecで取得。
+                        var sleepMsec = (int)(wakeTime - DateTime.Now).TotalMilliseconds + 10;
+
+                        Job.WaitSynced(sleepMsec);
+                    }
 
                     try
                     {

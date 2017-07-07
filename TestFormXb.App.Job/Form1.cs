@@ -31,6 +31,10 @@ namespace TestFormXb
         {
             this.InitTest();
 
+            this.BackgroundJobManagerTest();
+
+            this.DelayedOnceJobManagerTest();
+
             await this.IsUIThreadTest();
 
             this.IsMonitorEnabledTest();
@@ -732,6 +736,115 @@ namespace TestFormXb
                 throw;
             }
         }
+
+        private void DelayedOnceJobManagerTest()
+        {
+            try
+            {
+                var execCount = 0;
+
+                var manager = new Job.DelayedOnceJobManager(() =>
+                {
+                    execCount++;
+                    Xb.Util.Out("Job Executed");
+                }, 1000);
+
+                for(var i = 0; i < 10; i++)
+                {
+                    Job.WaitSynced(500);
+                    manager.Run();
+                    Xb.Util.Out("Run - Unlimitted");
+                }
+
+                Job.WaitSynced(1500);
+
+                Assert.AreEqual(execCount, 1);
+
+                execCount = 0;
+
+
+                manager = new Job.DelayedOnceJobManager(() =>
+                {
+                    execCount++;
+                    Xb.Util.Out("Job Executed");
+                }, 1000, 2000);
+
+                for (var i = 0; i < 10; i++)
+                {
+                    Job.WaitSynced(500);
+                    manager.Run();
+                    Xb.Util.Out("Run - Limitted");
+                }
+
+                Job.WaitSynced(2500);
+
+                Assert.AreEqual(execCount, 3);
+
+                var a = 1;
+            }
+            catch (Exception ex)
+            {
+                Xb.Util.Out(ex);
+                throw;
+            }
+        }
+
+        private void BackgroundJobManagerTest()
+        {
+            try
+            {
+                var manager = new Job.BackgroundJobManager("TestBGJM");
+                Assert.AreEqual(manager.Name, "TestBGJM");
+                var execCount = 0;
+                var action = new Action(() => 
+                {
+                    execCount++;
+                    Xb.Util.Out("Exec Action");
+                });
+
+                Job.Run(() => 
+                {
+                    manager.Regist(action);
+                    manager.Regist(action);
+                    manager.Regist(action);
+                });
+
+
+                Job.WaitSynced(1000);
+
+                Assert.AreEqual(execCount, 3);
+
+                execCount = 0;
+
+                manager.Suppress(this, "TestingForm");
+
+                Job.Run(() =>
+                {
+                    manager.Regist(action);
+                    manager.Regist(action);
+                    manager.Regist(action);
+                });
+
+                Job.WaitSynced(1000);
+
+                Assert.AreEqual(execCount, 0);
+
+                manager.ReleaseSuppress(this);
+
+                Job.WaitSynced(7000);
+
+                Assert.AreEqual(execCount, 3);
+
+                var a = 1;
+
+            }
+            catch (Exception ex)
+            {
+                Xb.Util.Out(ex);
+                throw;
+            }
+        }
+
 
         private void Template()
         {
