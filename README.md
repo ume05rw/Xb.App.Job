@@ -63,7 +63,30 @@ ex) Exec the serial task with CancelToken.
     {
         //Canceled action.
     }
-
+  
+ex) Execute Background Jobs.
+    
+    using Xb.App;
+    
+    var manager = new Job.BackgroundJobManager();
+    manager.Regist(() => { ...background job1... });
+    manager.Regist(() => { ...background job2... });
+    manager.Regist(() => { ...background job3... });
+  
+ex) Aggregation of job execution
+    
+    using Xb.App;
+    
+    var manager = new Job.DelayedOnceJobManager(() =>
+    {
+        // Execute Once Only Job.
+    }, 1000);
+    
+    for(var i = 0; i < 10; i++)
+        manager.Run();
+    
+  
+  
 Namespace and Methods are...
 
     ・Xb.App
@@ -172,6 +195,8 @@ Namespace and Methods are...
           |
           +- Job(instance) - for serial task processing
               |
+              | ### for Serial Tasks Processing ###
+              |
               +- Action { get; }
               |  Job Logic
               |
@@ -182,8 +207,82 @@ Namespace and Methods are...
               |  Start Delay
               |
               +- JobName { get; }
-                 Name of Info in Job-Monitor.
-           
+              |  Name of Info in Job-Monitor.
+              |
+              |
+              | ### Background Job Processing ###
+              |
+              +- .BackgroundJobManager(instance)
+              |    |
+              |    +- .Constructor(string name = null)
+              |    |
+              |    +- .Name { get; }
+              |    |   Job-Manager Name
+              |    |
+              |    +- .IsResident { get; set; }
+              |    |   Whether job-manager thread residentable or not.
+              |    |
+              |    +- .StartDelayMsec { get; set; }
+              |    |   Job start delay
+              |    |
+              |    +- .JobCheckSpanMsec { get; set; }
+              |    |   Job-Detection checking span
+              |    |
+              |    +- .SuppressCheckSpanMsec { get; set; }
+              |    |   Job-Suppression checking span
+              |    |
+              |    +- .IsSuppressing { get; }
+              |    |   Whether job-manager suppressing or not.
+              |    |
+              |    +- .IsRunning { get; }
+              |    |   Whether now on running job or not.
+              |    |
+              |    +- .SuppressorCount { get; }
+              |    |   Job suppressing ordered object count
+              |    |
+              |    +- .Regist(Action action)
+              |    |   Regist job
+              |    |
+              |    +- .Suppress(object suppressorObject, string suppressorName = null)
+              |    |   Suppress job
+              |    |
+              |    +- .ReleaseSuppress(object suppressorObject)
+              |    |   Release suppress
+              |    |
+              |    +- .IsSuppressorObject(object targetObject)
+              |    |   Whether passing-object is suppressor or not.
+              |    |
+              |    +- .GetSuppressorNames()
+              |        Get suppressing object's Names
+              |
+              |
+              | ### Aggregation of Job execution ###
+              |
+              +- .DelayedOnceJobManager(instance)
+                   |
+                   +- .Constructor(Action delayedAction,
+                   |               int delayMsec,
+                   |               int maxDelayMsec)
+                   |
+                   +- .IsScheduled { get; }
+                   |   Whether job execution scheduled or not.
+                   |
+                   +- .ScheduledTime { get; }
+                   |   Job execution scheduled time
+                   |
+                   +- .ScheduleLimitedTime { get; }
+                   |   Maximum delay limit time
+                   |
+                   +- .DelayMsec { get; set; }
+                   |   Job-Execution delay time
+                   |
+                   +- .MaxDelayMsec { get; set; }
+                   |   Maximun delay time
+                   |
+                   +- .Run()
+                       Request execution
+
+
 
 
 ## Licence
