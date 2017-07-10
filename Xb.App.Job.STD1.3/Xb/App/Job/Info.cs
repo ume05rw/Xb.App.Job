@@ -64,7 +64,7 @@ namespace Xb.App
             /// Generator class name
             /// Action/FuncTの生成元クラス名
             /// </summary>
-            public string CalledClassName { get; private set; }
+            public string CallerClassName { get; private set; }
 
             /// <summary>
             /// job name
@@ -94,13 +94,16 @@ namespace Xb.App
             /// Generator Thread ID
             /// 呼び出し元スレッドID
             /// </summary>
-            public int CalledThreadId { get; private set; } = -1;
+            public int CallerThreadId { get; private set; } = -1;
 
             /// <summary>
             /// Status String
             /// 状態情報文字列
             /// </summary>
-            public string State => $"ThID: {this.ExecThreadId.ToString().PadLeft(5)},  StartTime: {this.StartTime:HH:mm:ss.fff},  ProcTime:{(DateTime.Now - this.StartTime).TotalSeconds.ToString("F3").PadLeft(10)} sec,  ActiveThreads: {Job.Monitor.Instance?.OnWork.ToString().PadLeft(3)}, JobName: {this.JobName.PadRight(25)} CalledClass: {this.CalledClassName}";
+            public string State => $"ThID: {this.ExecThreadId.ToString().PadLeft(5)},  StartTime: {this.StartTime:HH:mm:ss.fff},  " 
+                                 + $"ProcTime:{(DateTime.Now - this.StartTime).TotalSeconds.ToString("F3").PadLeft(10)} sec,  " 
+                                 + $"JobName: {this.JobName.PadRight(25)}, " 
+                                 + $"CallerClass: {this.CallerClassName}, CallerThID: {this.CallerThreadId.ToString().PadLeft(5)}";
 
 
 
@@ -116,18 +119,18 @@ namespace Xb.App
                 this.JobId = Job.Info._maxJobId;
                 this.StartTime = DateTime.Now;
                 this.JobName = name;
-                this.CalledClassName = calledClassName;
+                this.CallerClassName = calledClassName;
                 this.IsEnded = false;
                 this.EndTime = DateTime.MaxValue;
-                this.CalledThreadId = System.Environment.CurrentManagedThreadId;
+                this.CallerThreadId = System.Environment.CurrentManagedThreadId;
 
 
                 lock(Info.ThreadInfos)
                 {
-                    if (Info.ThreadInfos.ContainsKey(this.CalledThreadId))
-                        Info.ThreadInfos.Remove(this.CalledThreadId);
+                    if (Info.ThreadInfos.ContainsKey(this.CallerThreadId))
+                        Info.ThreadInfos.Remove(this.CallerThreadId);
 
-                    Info.ThreadInfos.Add(this.CalledThreadId, this);
+                    Info.ThreadInfos.Add(this.CallerThreadId, this);
                 }
             }
 
@@ -163,7 +166,7 @@ namespace Xb.App
                 {
                     if (disposing)
                     {
-                        this.CalledClassName = null;
+                        this.CallerClassName = null;
                         this.JobName = null;
                     }
                     disposedValue = true;
