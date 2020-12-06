@@ -34,10 +34,15 @@ namespace Xb.App
         /// Initialize
         /// 初期化処理
         /// </summary>
+        /// <param name="isMonitorEnabled"></param>
+        /// <param name="isDumpTaskValidation"></param>
         /// <remarks>
         /// ** MAKE SURE to execute this with UI-THREAD. **
         /// </remarks>
-        public static void Init()
+        public static void Init(
+            bool isMonitorEnabled = true,
+            bool isDumpTaskValidation = true
+        )
         {
             try
             {
@@ -47,10 +52,10 @@ namespace Xb.App
                 Xb.Util.Out($"UI Thread ID = {Job._uiThreadId}");
 
                 //Start Job Monitor
-                Job.IsMonitorEnabled = true;
+                Job.IsMonitorEnabled = isMonitorEnabled;
 
                 //Start Task-Validation
-                Job.IsDumpTaskValidation = true;
+                Job.IsDumpTaskValidation = isDumpTaskValidation;
             }
             catch (Exception ex)
             {
@@ -75,7 +80,7 @@ namespace Xb.App
                 try
                 {
                     if (Job._uiThreadId == -1)
-                        throw new InvalidOperationException("Exec [ Xb.App.Job.Init() ] with UI-Thread.");
+                        throw new InvalidOperationException("Exec [ Xb.App.Job.Init() ] with UI-Thread first.");
 
                     return (System.Environment.CurrentManagedThreadId == Job._uiThreadId);
                 }
@@ -156,10 +161,12 @@ namespace Xb.App
         /// <param name="jobName"></param>
         /// <param name="cancellation"></param>
         /// <returns></returns>
-        public static async Task Run(Action action
-                                   , bool isExecUiThread
-                                   , string jobName = null
-                                   , CancellationTokenSource cancellation = null)
+        public static async Task Run(
+            Action action,
+            bool isExecUiThread,
+            string jobName = null,
+            CancellationTokenSource cancellation = null
+        )
         {
             try
             {
@@ -260,10 +267,12 @@ namespace Xb.App
         /// <param name="jobName"></param>
         /// <param name="cancellation"></param>
         /// <returns></returns>
-        public static async Task<T> Run<T>(Func<T> action
-                                         , bool isExecUiThread
-                                         , string jobName = null
-                                         , CancellationTokenSource cancellation = null)
+        public static async Task<T> Run<T>(
+            Func<T> action,
+            bool isExecUiThread,
+            string jobName = null,
+            CancellationTokenSource cancellation = null
+        )
         {
             try
             {
@@ -370,11 +379,14 @@ namespace Xb.App
         /// </summary>
         /// <param name="action"></param>
         /// <param name="jobName"></param>
-        public static void Run(Action action, string jobName = null)
+        public static Task Run(Action action, string jobName = null)
         {
             try
             {
-                Job.Run(action, false, jobName).ConfigureAwait(false);
+                var task = Job.Run(action, false, jobName);
+                _ = task.ConfigureAwait(false);
+
+                return task;
             }
             catch (Exception ex)
             {
@@ -391,11 +403,14 @@ namespace Xb.App
         /// <param name="action"></param>
         /// <param name="jobName"></param>
         /// <returns></returns>
-        public static void RunUI(Action action, string jobName = null)
+        public static Task RunUI(Action action, string jobName = null)
         {
             try
             {
-                Job.Run(action, true, jobName).ConfigureAwait(false);
+                var task = Job.Run(action, true, jobName);
+                _ = task.ConfigureAwait(false);
+
+                return task;
             }
             catch (Exception ex)
             {
@@ -415,7 +430,10 @@ namespace Xb.App
         {
             try
             {
-                Job.Run(action, false, jobName).ConfigureAwait(false).GetAwaiter().GetResult();
+                Job.Run(action, false, jobName)
+                    .ConfigureAwait(false)
+                    .GetAwaiter()
+                    .GetResult();
             }
             catch (Exception ex)
             {
@@ -435,7 +453,10 @@ namespace Xb.App
         {
             try
             {
-                Job.Run(action, true, jobName).ConfigureAwait(false).GetAwaiter().GetResult();
+                Job.Run(action, true, jobName)
+                    .ConfigureAwait(false)
+                    .GetAwaiter()
+                    .GetResult();
             }
             catch (Exception ex)
             {
@@ -486,7 +507,9 @@ namespace Xb.App
         {
             try
             {
-                Job.Wait(msec, cancellation).GetAwaiter().GetResult();
+                Job.Wait(msec, cancellation)
+                    .GetAwaiter()
+                    .GetResult();
             }
             catch (Exception ex)
             {
@@ -503,14 +526,17 @@ namespace Xb.App
         /// <param name="action"></param>
         /// <param name="msec"></param>
         /// <param name="jobName"></param>
-        public static void DelayedRun(Action action, int msec, string jobName = null)
+        public static Task DelayedRun(Action action, int msec, string jobName = null)
         {
             try
             {
-                Job.RunSerial(
+                var task = Job.RunSerial(
                     Job.CreateDelay(msec),
                     Job.CreateJob(action, false, jobName)
-                ).ConfigureAwait(false);
+                );
+                _ = task.ConfigureAwait(false);
+
+                return task;
             }
             catch (Exception ex)
             {
@@ -528,14 +554,17 @@ namespace Xb.App
         /// <param name="msec"></param>
         /// <param name="jobName"></param>
         /// <returns></returns>
-        public static void DelayedRunUI(Action action, int msec, string jobName = null)
+        public static Task DelayedRunUI(Action action, int msec, string jobName = null)
         {
             try
             {
-                Job.RunSerial(
+                var task = Job.RunSerial(
                     Job.CreateDelay(msec),
                     Job.CreateJob(action, true, jobName)
-                ).ConfigureAwait(false);
+                );
+                _ = task.ConfigureAwait(false);
+
+                return task;
             }
             catch (Exception ex)
             {
@@ -650,8 +679,10 @@ namespace Xb.App
         /// <param name="cancellation"></param>
         /// <param name="jobs"></param>
         /// <returns></returns>
-        public static async Task RunSerial(CancellationTokenSource cancellation
-                                         , params Job[] jobs)
+        public static async Task RunSerial(
+            CancellationTokenSource cancellation,
+            params Job[] jobs
+        )
         {
             try
             {
@@ -715,8 +746,10 @@ namespace Xb.App
         /// <param name="cancellation"></param>
         /// <param name="actions"></param>
         /// <returns></returns>
-        public static async Task RunSerial(CancellationTokenSource cancellation
-                                         , params Action[] actions)
+        public static async Task RunSerial(
+            CancellationTokenSource cancellation,
+            params Action[] actions
+        )
         {
             try
             {
@@ -748,7 +781,7 @@ namespace Xb.App
             {
                 if (actions == null)
                     return;
-                
+
                 await Job.RunSerial(null, actions);
             }
             catch (Exception ex)
@@ -769,10 +802,12 @@ namespace Xb.App
         /// <param name="cancellation"></param>
         /// <param name="jobs"></param>
         /// <returns></returns>
-        public static async Task<T> RunSerial<T>(Func<T> lastJob
-                                               , bool isUiThreadLastJob = false
-                                               , CancellationTokenSource cancellation = null
-                                               , params Job[] jobs)
+        public static async Task<T> RunSerial<T>(
+            Func<T> lastJob,
+            bool isUiThreadLastJob = false,
+            CancellationTokenSource cancellation = null,
+            params Job[] jobs
+        )
         {
             try
             {
@@ -806,8 +841,10 @@ namespace Xb.App
         /// <param name="lastJob"></param>
         /// <param name="jobs"></param>
         /// <returns></returns>
-        public static async Task<T> RunSerial<T>(Func<T> lastJob
-                                               , params Job[] jobs)
+        public static async Task<T> RunSerial<T>(
+            Func<T> lastJob,
+            params Job[] jobs
+        )
         {
             try
             {

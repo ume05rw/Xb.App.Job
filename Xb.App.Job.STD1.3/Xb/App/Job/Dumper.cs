@@ -251,7 +251,7 @@ namespace Xb.App
                         suspiciousDump = Job.Monitor.Instance.GetValidation();
 
                     //出力対象が無い場合、なにもしないで終わる。
-                    if (!Job.Dumper.IsDumpStatus 
+                    if (!Job.Dumper.IsDumpStatus
                         && suspiciousDump.Length <= 0)
                         return;
 

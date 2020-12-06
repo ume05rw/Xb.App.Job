@@ -100,9 +100,9 @@ namespace Xb.App
             /// Status String
             /// 状態情報文字列
             /// </summary>
-            public string State => $"ThID: {this.ExecThreadId.ToString().PadLeft(5)},  StartTime: {this.StartTime:HH:mm:ss.fff},  " 
-                                 + $"ProcTime:{(DateTime.Now - this.StartTime).TotalSeconds.ToString("F3").PadLeft(10)} sec,  " 
-                                 + $"JobName: {this.JobName.PadRight(25)}, " 
+            public string State => $"ThID: {this.ExecThreadId.ToString().PadLeft(5)},  StartTime: {this.StartTime:HH:mm:ss.fff},  "
+                                 + $"ProcTime:{(DateTime.Now - this.StartTime).TotalSeconds.ToString("F3").PadLeft(10)} sec,  "
+                                 + $"JobName: {this.JobName.PadRight(25)}, "
                                  + $"CallerClass: {this.CallerClassName}, CallerThID: {this.CallerThreadId.ToString().PadLeft(5)}";
 
 

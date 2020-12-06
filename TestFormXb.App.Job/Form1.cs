@@ -1,10 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -24,7 +18,7 @@ namespace TestFormXb
             this.textBox1.Text = "";
             Assert.Init(this.textBox1);
 
-            this.ExecTest();
+            _ = this.ExecTest();
         }
 
         private async Task ExecTest()
@@ -719,7 +713,7 @@ namespace TestFormXb
                     catch (OperationCanceledException)
                     {
                     }
-                    
+
                     Assert.AreEqual(jobCount, 2, "RunSerialTCancelTest");
                     Assert.IsTrue((DateTime.Now - startTime).TotalMilliseconds < 400, "RunSerialTCancelTest");
 
@@ -779,8 +773,6 @@ namespace TestFormXb
                 Job.WaitSynced(2500);
 
                 Assert.AreEqual(execCount, 3);
-
-                var a = 1;
             }
             catch (Exception ex)
             {
@@ -796,13 +788,13 @@ namespace TestFormXb
                 var manager = new Job.BackgroundJobManager("TestBGJM");
                 Assert.AreEqual(manager.Name, "TestBGJM");
                 var execCount = 0;
-                var action = new Action(() => 
+                var action = new Action(() =>
                 {
                     execCount++;
                     Xb.Util.Out("Exec Action");
                 });
 
-                Job.Run(() => 
+                Job.Run(() =>
                 {
                     manager.Regist(action);
                     manager.Regist(action);
@@ -834,9 +826,6 @@ namespace TestFormXb
                 Job.WaitSynced(7000);
 
                 Assert.AreEqual(execCount, 3);
-
-                var a = 1;
-
             }
             catch (Exception ex)
             {
@@ -850,7 +839,7 @@ namespace TestFormXb
         {
             try
             {
-                
+
             }
             catch (Exception ex)
             {

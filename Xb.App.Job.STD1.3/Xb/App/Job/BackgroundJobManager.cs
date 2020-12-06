@@ -282,7 +282,7 @@ namespace Xb.App
                             this._suppressors.Add(suppressorObject, suppressorName);
 
                             Xb.Util.Out($"BackgroundJobManager[{this.Name}].Suppress by {suppressorName}: {suppressorObject.GetType().Name}, "
-                                      + $"Suppressors Count: {this.SuppressorCount} / " 
+                                      + $"Suppressors Count: {this.SuppressorCount} / "
                                       + $"{(this.IsSuppressing ? $"Suppressed By: {this.GetSuppressorNames()}" : "Released")}");
                         }
                     }
@@ -311,7 +311,7 @@ namespace Xb.App
                             this._suppressors.Remove(suppressorObject);
 
                             Xb.Util.Out($"BackgroundJobManager[{this.Name}].ReleaseSuppress by {suppressorName}: {suppressorObject.GetType().Name}, "
-                                      + $"Suppressors Count: {this.SuppressorCount} / " 
+                                      + $"Suppressors Count: {this.SuppressorCount} / "
                                       + $"{(this.IsSuppressing ? $"Suppressed By: {this.GetSuppressorNames()}" : "Released")}");
                         }
                     }

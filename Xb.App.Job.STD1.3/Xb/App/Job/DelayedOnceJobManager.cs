@@ -13,7 +13,7 @@ namespace Xb.App
         /// </summary>
         /// <remarks>
         /// accepts multiple execution requests in delay time, and execute only one.
-        /// each time an execution request is made, 
+        /// each time an execution request is made,
         /// the scheduled execution time is delayed and reset.
         /// </remarks>
         public class DelayedOnceJobManager : IDisposable
@@ -30,9 +30,9 @@ namespace Xb.App
             /// Maximum delay limit time
             /// </summary>
             /// <remarks>
-            /// When MaxDelayMsec is greater than zero, 
+            /// When MaxDelayMsec is greater than zero,
             /// the action is forcibly executed when this value is exceeded.
-            /// 
+            ///
             /// When MaxDelayMsec is less than zero(default), this property is disabled.
             /// </remarks>
             public DateTime ScheduleLimitedTime { get; private set; } = DateTime.MinValue;
@@ -51,11 +51,11 @@ namespace Xb.App
             /// Maximun delay time
             /// </summary>
             /// <remarks>
-            /// When this value is greater than zero, 
+            /// When this value is greater than zero,
             /// the action is forcibly executed when ScheduleLimitedTime is exceeded.
-            /// 
+            ///
             /// When this value is less than zero(default), the maximum delay limit is disabled.
-            /// At this time, if you continue to run in small increments, 
+            /// At this time, if you continue to run in small increments,
             /// the action will not be executed.
             /// </remarks>
             public int MaxDelayMsec { get; set; } = 0;
@@ -136,6 +136,10 @@ namespace Xb.App
             #region IDisposable Support
             private bool disposedValue = false; // 重複する呼び出しを検出するには
 
+            /// <summary>
+            /// Dispose Implements
+            /// </summary>
+            /// <param name="disposing"></param>
             protected virtual void Dispose(bool disposing)
             {
                 if (!disposedValue)
@@ -149,6 +153,9 @@ namespace Xb.App
                 }
             }
 
+            /// <summary>
+            /// Dispose
+            /// </summary>
             public void Dispose()
             {
                 Dispose(true);

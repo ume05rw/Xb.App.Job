@@ -31,7 +31,7 @@ namespace Xb.App
             {
                 try
                 {
-                    return Job.Monitor._instance 
+                    return Job.Monitor._instance
                            ?? (Job.Monitor._instance = new Job.Monitor(isWorkingJobOnly));
                 }
                 catch (Exception ex)
@@ -80,7 +80,7 @@ namespace Xb.App
             {
                 public bool IsLocked { get; set; } = false;
             }
-            
+
 
 
 
