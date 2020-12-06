@@ -261,14 +261,14 @@ namespace Xb.App
         /// Execute a job with return value.
         /// 戻り値付きジョブを実行する。
         /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="action"></param>
+        /// <typeparam name="TResult"></typeparam>
+        /// <param name="func"></param>
         /// <param name="isExecUiThread"></param>
         /// <param name="jobName"></param>
         /// <param name="cancellation"></param>
         /// <returns></returns>
-        public static async Task<T> Run<T>(
-            Func<T> action,
+        public static async Task<TResult> Run<TResult>(
+            Func<TResult> func,
             bool isExecUiThread,
             string jobName = null,
             CancellationTokenSource cancellation = null
@@ -283,10 +283,10 @@ namespace Xb.App
                     throw new OperationCanceledException("Task Canceled.");
                 }
 
-                var callerName = action.Target?.GetType().Name ?? "";
+                var callerName = func.Target?.GetType().Name ?? "";
                 var startId = Job.Monitor.Instance?.Start(jobName, callerName);
 
-                var result = default(T);
+                var result = default(TResult);
                 try
                 {
                     if (isExecUiThread && Job.IsUIThread)
@@ -302,7 +302,7 @@ namespace Xb.App
                         try
                         {
                             Job.Monitor.Instance?.SetThreadId(startId);
-                            result = action.Invoke();
+                            result = func.Invoke();
                         }
                         catch (Exception ex)
                         {
@@ -314,12 +314,12 @@ namespace Xb.App
                         return result;
                     }
 
-                    var innerAction = new Func<T>(() =>
+                    var innerAction = new Func<TResult>(() =>
                     {
                         try
                         {
                             Job.Monitor.Instance?.SetThreadId(startId);
-                            return action.Invoke();
+                            return func.Invoke();
                         }
                         catch (Exception ex)
                         {
@@ -335,8 +335,8 @@ namespace Xb.App
                     if (isExecUiThread)
                     {
                         var task = (cancellation == null)
-                                        ? new Task<T>(innerAction)
-                                        : new Task<T>(innerAction, cancellation.Token);
+                                        ? new Task<TResult>(innerAction)
+                                        : new Task<TResult>(innerAction, cancellation.Token);
 
                         task.Start(Job._uiTaskScheduler);
 
@@ -395,6 +395,28 @@ namespace Xb.App
             }
         }
 
+        /// <summary>
+        /// Execute the passed Action asynchronously on Non-UI-Thread.
+        /// 渡し値Actionを非UIスレッドで非同期実行する。
+        /// </summary>
+        /// <typeparam name="TResult"></typeparam>
+        /// <param name="func"></param>
+        /// <param name="jobName"></param>
+        public static Task<TResult> Run<TResult>(Func<TResult> func, string jobName = null)
+        {
+            try
+            {
+                var task = Job.Run(func, false, jobName);
+                _ = task.ConfigureAwait(false);
+
+                return task;
+            }
+            catch (Exception ex)
+            {
+                Xb.Util.Out(ex);
+                throw;
+            }
+        }
 
         /// <summary>
         /// Execute the passed Action asynchronously on UI-Thread.
@@ -408,6 +430,30 @@ namespace Xb.App
             try
             {
                 var task = Job.Run(action, true, jobName);
+                _ = task.ConfigureAwait(false);
+
+                return task;
+            }
+            catch (Exception ex)
+            {
+                Xb.Util.Out(ex);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Execute the passed Action asynchronously on UI-Thread.
+        /// 渡し値ActionをUIスレッドで非同期実行する。
+        /// </summary>
+        /// <typeparam name="TResult"></typeparam>
+        /// <param name="func"></param>
+        /// <param name="jobName"></param>
+        /// <returns></returns>
+        public static Task<TResult> RunUI<TResult>(Func<TResult> func, string jobName = null)
+        {
+            try
+            {
+                var task = Job.Run(func, true, jobName);
                 _ = task.ConfigureAwait(false);
 
                 return task;
@@ -442,6 +488,29 @@ namespace Xb.App
             }
         }
 
+        /// <summary>
+        /// Synchronously Execute the passed Action on Non-UI-Thread.
+        /// 渡し値Actionを非UIスレッドで同期的に実行する。
+        /// </summary>
+        /// <typeparam name="TResult"></typeparam>
+        /// <param name="func"></param>
+        /// <param name="jobName"></param>
+        public static TResult RunSynced<TResult>(Func<TResult> func, string jobName = null)
+        {
+            try
+            {
+                return Job.Run(func, false, jobName)
+                    .ConfigureAwait(false)
+                    .GetAwaiter()
+                    .GetResult();
+            }
+            catch (Exception ex)
+            {
+                Xb.Util.Out(ex);
+                throw;
+            }
+        }
+
 
         /// <summary>
         /// Synchronously Execute the passed Action on Non-UI-Thread.
@@ -454,6 +523,29 @@ namespace Xb.App
             try
             {
                 Job.Run(action, true, jobName)
+                    .ConfigureAwait(false)
+                    .GetAwaiter()
+                    .GetResult();
+            }
+            catch (Exception ex)
+            {
+                Xb.Util.Out(ex);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Synchronously Execute the passed Action on Non-UI-Thread.
+        /// 渡し値Actionを、UIスレッドで同期的に実行する。
+        /// </summary>
+        /// <typeparam name="TResult"></typeparam>
+        /// <param name="func"></param>
+        /// <param name="jobName"></param>
+        public static TResult RunUISynced<TResult>(Func<TResult> func, string jobName = null)
+        {
+            try
+            {
+                return Job.Run(func, true, jobName)
                     .ConfigureAwait(false)
                     .GetAwaiter()
                     .GetResult();
