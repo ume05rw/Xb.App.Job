@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Xb.App
 {
@@ -12,7 +10,7 @@ namespace Xb.App
         /// Background task processor class
         /// バックグラウンドタスク処理クラス
         /// </summary>
-        public class BackgroundJobManager
+        public class BackgroundJobManager : IDisposable
         {
             /// <summary>
             /// job-execution event args
@@ -139,6 +137,7 @@ namespace Xb.App
 
             private List<Action> _jobs = new List<Action>();
             private Dictionary<object, string> _suppressors = new Dictionary<object, string>();
+            private bool _disposedValue;
 
 
             /// <summary>
@@ -153,13 +152,13 @@ namespace Xb.App
 
 
             /// <summary>
-            /// Regist job
+            /// Register job
             /// ジョブを登録する。
             /// </summary>
             /// <param name="action"></param>
-            public void Regist(Action action)
+            public void Register(Action action)
             {
-                Xb.Util.Out($"BackgroundJobManager[{this.Name}].Regist - {action}");
+                Xb.Util.Out($"BackgroundJobManager[{this.Name}].Register - {action}");
 
                 lock (this._jobs)
                     this._jobs.Add(action);
@@ -168,7 +167,7 @@ namespace Xb.App
                     return;
 
                 this.IsRunning = true;
-                Xb.Util.Out($"BackgroundJobManager[{this.Name}].Regist - Kicked.");
+                Xb.Util.Out($"BackgroundJobManager[{this.Name}].Register - Kicked.");
 
                 Job.DelayedRun(() =>
                 {
@@ -176,24 +175,37 @@ namespace Xb.App
                     {
                         Xb.Util.Out($"BackgroundJobManager[{this.Name}] - Thread Start.");
 
-                        try { this.Started?.Invoke(this, new EventArgs()); }
-                        catch (Exception) { }
+                        try
+                        {
+                            this.Started?.Invoke(this, new EventArgs());
+                        }
+                        catch
+                        {
+                        }
 
                         do
                         {
+                            if (this._disposedValue)
+                                break;
+
                             int count = 0;
                             lock (this._jobs)
                                 count = this._jobs.Count;
 
                             while (count > 0)
                             {
+                                if (this._disposedValue)
+                                    break;
+
                                 Xb.Util.Out($"BackgroundJobManager[{this.Name}] - Job Count: {count}");
 
                                 while (this.IsSuppressing)
                                 {
-                                    Xb.Util.Out($"BackgroundJobManager[{this.Name}] - Waiting Suppress Release, "
-                                              + $"Suppressors Count: {this.SuppressorCount}, "
-                                              + $"Suppressed By: {this.GetSuppressorNames()}");
+                                    Xb.Util.Out(
+                                        $"BackgroundJobManager[{this.Name}] - Waiting Suppress Release, "
+                                        + $"Suppressors Count: {this.SuppressorCount}, "
+                                        + $"Suppressed By: {this.GetSuppressorNames()}"
+                                    );
                                     Job.WaitSynced(this.SuppressCheckSpanMsec);
                                 }
 
@@ -212,8 +224,13 @@ namespace Xb.App
                                     Xb.Util.Out(ex);
                                 }
 
-                                try { this.Executed?.Invoke(this, new ExecuteEventArgs(target)); }
-                                catch (Exception) { }
+                                try
+                                {
+                                    this.Executed?.Invoke(this, new ExecuteEventArgs(target));
+                                }
+                                catch
+                                {
+                                }
 
                                 //処理残数を再取得
                                 lock (this._jobs)
@@ -223,14 +240,22 @@ namespace Xb.App
                                 }
                             }
 
+                            if (this._disposedValue)
+                                break;
+
                             Xb.Util.Out($"BackgroundJobManager[{this.Name}] - Job Completed.");
 
                             if (this.IsResident)
                             {
                                 Xb.Util.Out($"BackgroundJobManager[{this.Name}] - Sleep.");
 
-                                try { this.Sleep?.Invoke(this, new EventArgs()); }
-                                catch (Exception) { }
+                                try
+                                {
+                                    this.Sleep?.Invoke(this, new EventArgs());
+                                }
+                                catch
+                                {
+                                }
 
                                 //次のジョブが来るまでスリープを繰り返す。
                                 while (count <= 0)
@@ -243,19 +268,29 @@ namespace Xb.App
 
                                 Xb.Util.Out($"BackgroundJobManager[{this.Name}] - Wake.");
 
-                                try { this.Waked?.Invoke(this, new EventArgs()); }
-                                catch (Exception) { }
+                                try
+                                {
+                                    this.Waked?.Invoke(this, new EventArgs());
+                                }
+                                catch
+                                {
+                                }
                             }
                         }
-                        while (this.IsResident);
+                        while (this.IsResident); // <- do文の条件式
 
                         this.IsRunning = false;
                         Xb.Util.Out($"BackgroundJobManager[{this.Name}] - Thread Close.");
 
-                        try { this.Ended?.Invoke(this, new EventArgs()); }
-                        catch (Exception) { }
+                        try
+                        {
+                            this.Ended?.Invoke(this, new EventArgs());
+                        }
+                        catch
+                        {
+                        }
                     }
-                    catch (Exception)
+                    catch
                     {
                         this.IsRunning = false;
                     }
@@ -281,9 +316,11 @@ namespace Xb.App
 
                             this._suppressors.Add(suppressorObject, suppressorName);
 
-                            Xb.Util.Out($"BackgroundJobManager[{this.Name}].Suppress by {suppressorName}: {suppressorObject.GetType().Name}, "
-                                      + $"Suppressors Count: {this.SuppressorCount} / "
-                                      + $"{(this.IsSuppressing ? $"Suppressed By: {this.GetSuppressorNames()}" : "Released")}");
+                            Xb.Util.Out(
+                                $"BackgroundJobManager[{this.Name}].Suppress by {suppressorName}: {suppressorObject.GetType().Name}, "
+                                + $"Suppressors Count: {this.SuppressorCount} / "
+                                + $"{(this.IsSuppressing ? $"Suppressed By: {this.GetSuppressorNames()}" : "Released")}"
+                            );
                         }
                     }
                 }
@@ -310,9 +347,11 @@ namespace Xb.App
                             var suppressorName = this._suppressors[suppressorObject];
                             this._suppressors.Remove(suppressorObject);
 
-                            Xb.Util.Out($"BackgroundJobManager[{this.Name}].ReleaseSuppress by {suppressorName}: {suppressorObject.GetType().Name}, "
-                                      + $"Suppressors Count: {this.SuppressorCount} / "
-                                      + $"{(this.IsSuppressing ? $"Suppressed By: {this.GetSuppressorNames()}" : "Released")}");
+                            Xb.Util.Out(
+                                $"BackgroundJobManager[{this.Name}].ReleaseSuppress by {suppressorName}: {suppressorObject.GetType().Name}, "
+                                + $"Suppressors Count: {this.SuppressorCount} / "
+                                + $"{(this.IsSuppressing ? $"Suppressed By: {this.GetSuppressorNames()}" : "Released")}"
+                            );
                         }
                     }
                 }
@@ -346,7 +385,7 @@ namespace Xb.App
             /// <returns></returns>
             public string GetSuppressorNames()
             {
-                var result = "";
+                var result = string.Empty;
 
                 lock (this._suppressors)
                 {
@@ -354,6 +393,42 @@ namespace Xb.App
                 }
 
                 return result;
+            }
+
+            /// <summary>
+            /// Dispose
+            /// </summary>
+            /// <param name="disposing"></param>
+            protected virtual void Dispose(bool disposing)
+            {
+                if (!this._disposedValue)
+                {
+                    if (disposing)
+                    {
+                        this._jobs.Clear();
+                        this._suppressors.Clear();
+
+                        this.Name = null;
+                        this.StartDelayMsec = default;
+                        this.JobCheckSpanMsec = default;
+                        this.SuppressCheckSpanMsec = default;
+                        this.IsResident = default;
+                        this.IsRunning = default;
+                        this._jobs = null;
+                        this._suppressors = null;
+                    }
+
+                    this._disposedValue = true;
+                }
+            }
+
+            /// <summary>
+            /// Dispose
+            /// </summary>
+            public void Dispose()
+            {
+                this.Dispose(true);
+                GC.SuppressFinalize(this);
             }
         }
     }

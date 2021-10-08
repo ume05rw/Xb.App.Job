@@ -18,7 +18,7 @@ namespace Xb.App
             /// <summary>
             /// Job Info Array
             /// </summary>
-            private static Dictionary<int, Info> ThreadInfos = new Dictionary<int, Info>();
+            private static readonly Dictionary<int, Info> ThreadInfos = new Dictionary<int, Info>();
 
             /// <summary>
             /// Current Thread's Job Info
@@ -100,10 +100,11 @@ namespace Xb.App
             /// Status String
             /// 状態情報文字列
             /// </summary>
-            public string State => $"ThID: {this.ExecThreadId.ToString().PadLeft(5)},  StartTime: {this.StartTime:HH:mm:ss.fff},  "
-                                 + $"ProcTime:{(DateTime.Now - this.StartTime).TotalSeconds.ToString("F3").PadLeft(10)} sec,  "
-                                 + $"JobName: {this.JobName.PadRight(25)}, "
-                                 + $"CallerClass: {this.CallerClassName}, CallerThID: {this.CallerThreadId.ToString().PadLeft(5)}";
+            public string State =>
+                $"ThID: {this.ExecThreadId,5},  StartTime: {this.StartTime:HH:mm:ss.fff},  "
+                + $"ProcTime:{(DateTime.Now - this.StartTime).TotalSeconds,10:F3} sec,  "
+                + $"JobName: {this.JobName,-25}, "
+                + $"CallerClass: {this.CallerClassName}, CallerThID: {this.CallerThreadId,5}";
 
 
 

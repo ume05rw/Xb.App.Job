@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
 
 
 namespace Xb.App
@@ -32,7 +31,7 @@ namespace Xb.App
                 try
                 {
                     return Job.Monitor._instance
-                           ?? (Job.Monitor._instance = new Job.Monitor(isWorkingJobOnly));
+                        ?? (Job.Monitor._instance = new Job.Monitor(isWorkingJobOnly));
                 }
                 catch (Exception ex)
                 {
@@ -157,7 +156,7 @@ namespace Xb.App
                     {
                         this._locker.IsLocked = true;
                         this.Started++;
-                        var info = new Job.Info(name ?? "", calledClassName ?? "");
+                        var info = new Job.Info(name ?? string.Empty, calledClassName ?? string.Empty);
 
                         lock (this._jobs)
                             this._jobs.Add(info.JobId, info);
@@ -317,8 +316,8 @@ namespace Xb.App
                 {
                     var dumpLines = new List<string>
                     {
-                        $"------------------------------------------------------------",
-                        $"- Job Status ",
+                        "------------------------------------------------------------",
+                        "- Job Status ",
                         $"OnWork: {this.OnWork},  Started: {this.Started},  Ended: {this.Ended}"
                     };
 
@@ -336,7 +335,7 @@ namespace Xb.App
 
                     if (jobStateLines.Any())
                     {
-                        dumpLines.Add("");
+                        dumpLines.Add(string.Empty);
                         dumpLines.AddRange(jobStateLines.Select(p => $"{p.Value.State}"));
                     }
                     return dumpLines.ToArray();
@@ -395,8 +394,8 @@ namespace Xb.App
 
                         deadlockLines.AddRange(new string[]
                         {
-                            $"",
-                            $"- Thread {key.ToString().PadLeft(5)} Seems DeadLock?"
+                            string.Empty,
+                            $"- Thread {key,5} Seems DeadLock?"
                         });
                         deadlockLines.AddRange(infos.Select(j => $"     {j.State}"));
                     }
@@ -406,9 +405,9 @@ namespace Xb.App
                     {
                         deadlockLines.InsertRange(0, new[]
                         {
-                            "",
-                            $"------------------------------------------------------------",
-                            $"- Deadlock Suspicious Tasks",
+                            string.Empty,
+                            "------------------------------------------------------------",
+                            "- Deadlock Suspicious Tasks",
                         });
                     }
 
@@ -429,12 +428,12 @@ namespace Xb.App
                     {
                         heavyLines.AddRange(new[]
                         {
-                            $"",
-                            $"------------------------------------------------------------",
-                            $"- Long Running Tasks",
+                            string.Empty,
+                            "------------------------------------------------------------",
+                            "- Long Running Tasks",
                         });
                         heavyLines.AddRange(
-                            heavyTargets.Select(j => $"     { (baseTime - j.StartTime).TotalSeconds.ToString("#").PadRight(5)  } sec  - {j.State}")
+                            heavyTargets.Select(j => $"     { (baseTime - j.StartTime).TotalSeconds,-5:#} sec  - {j.State}")
                         );
                     }
 

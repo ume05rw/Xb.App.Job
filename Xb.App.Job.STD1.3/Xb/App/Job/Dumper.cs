@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
-using System.Threading.Tasks;
 
 
 namespace Xb.App
@@ -199,9 +197,11 @@ namespace Xb.App
                 //↑見えた方がいいと思うので、これをやめる。
                 Job.Run(() =>
                 {
-                    while (Job.Dumper.IsWorking
-                           && this._canceller != null
-                           && !this._canceller.IsCancellationRequested)
+                    while (
+                        Job.Dumper.IsWorking
+                        && this._canceller != null
+                        && !this._canceller.IsCancellationRequested
+                    )
                     {
                         try
                         {
@@ -218,7 +218,8 @@ namespace Xb.App
                             //キャンセル指示以外は、何が有っても動じない！！
                         }
                     }
-                }, false, "Xb.App.Job.Dumper.Timer", this._canceller).ConfigureAwait(false);
+                }, false, "Xb.App.Job.Dumper.Timer", this._canceller.Token)
+                    .ConfigureAwait(false);
             }
 
 
@@ -317,10 +318,10 @@ namespace Xb.App
 
                     var dumpLines = new List<string>
                     {
-                        $"------------------------------------------------------------",
-                        $"- System Status",
-                        $"PhysicalMemory: {phyMem.ToString("F2").PadLeft(7)} MB / VirtualMemory: {virMem.ToString("F2").PadLeft(7)} MB / PeakPagedmemory: {ppgMem.ToString("F2").PadLeft(7)} MB",
-                        $"UI Thread ID  : {Job._uiThreadId.ToString().PadLeft(4)} "
+                        "------------------------------------------------------------",
+                        "- System Status",
+                        $"PhysicalMemory: {phyMem,7:F2} MB / VirtualMemory: {virMem,7:F2} MB / PeakPagedmemory: {ppgMem,7:F2} MB",
+                        $"UI Thread ID  : {Job._uiThreadId,4} "
                     };
 
                     // AvailableWTs  :利用可能なワーカースレッド数

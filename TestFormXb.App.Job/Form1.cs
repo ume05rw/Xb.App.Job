@@ -75,18 +75,16 @@ namespace TestFormXb
 
                 Job.Init();
 
-                Assert.IsTrue(Job.IsMonitorEnabled);
+                Assert.IsFalse(Job.IsMonitorEnabled);
                 Assert.IsFalse(Job.IsDumpStatus);
-                Assert.IsTrue(Job.IsDumpTaskValidation);
-                Assert.AreEqual(Job.TimerIntervalMsec, 30000);
-                Assert.IsNotNull(Job.Dumper.Instance);
-                Assert.IsTrue(Job.Dumper.IsWorking);
+                Assert.IsFalse(Job.IsDumpTaskValidation);
+                Assert.AreEqual(Job.TimerIntervalMsec, -1);
+                Assert.IsNull(Job.Dumper.Instance);
+                Assert.IsFalse(Job.Dumper.IsWorking);
                 Assert.IsFalse(Job.Dumper.IsDumpStatus);
-                Assert.IsTrue(Job.Dumper.IsDumpTaskValidation);
-                Assert.IsNotNull(Job.Monitor.Instance);
-                Assert.IsTrue(Job.Monitor.IsWorking);
-
-                Assert.IsTrue(Job.Monitor.Instance.IsWorkingJobOnly);
+                Assert.IsFalse(Job.Dumper.IsDumpTaskValidation);
+                Assert.IsNull(Job.Monitor.Instance);
+                Assert.IsFalse(Job.Monitor.IsWorking);
             }
             catch (Exception ex)
             {
@@ -121,10 +119,6 @@ namespace TestFormXb
         {
             try
             {
-                Assert.IsTrue(Job.IsMonitorEnabled);
-                Assert.IsTrue(Job.Monitor.IsWorking);
-                Assert.IsNotNull(Job.Monitor.Instance);
-
                 Job.IsMonitorEnabled = false;
 
                 Assert.IsFalse(Job.IsMonitorEnabled);
@@ -149,30 +143,19 @@ namespace TestFormXb
         {
             try
             {
-                Assert.IsFalse(Job.IsDumpStatus);
-                Assert.IsTrue(Job.IsDumpTaskValidation);
-                Assert.IsNotNull(Job.Dumper.Instance);
-                Assert.IsTrue(Job.Dumper.IsWorking);
-                Assert.IsFalse(Job.Dumper.IsDumpStatus);
-                Assert.IsTrue(Job.Dumper.IsDumpTaskValidation);
-
                 Job.IsDumpStatus = true;
 
                 Assert.IsTrue(Job.IsDumpStatus);
-                Assert.IsTrue(Job.IsDumpTaskValidation);
                 Assert.IsNotNull(Job.Dumper.Instance);
                 Assert.IsTrue(Job.Dumper.IsWorking);
                 Assert.IsTrue(Job.Dumper.IsDumpStatus);
-                Assert.IsTrue(Job.Dumper.IsDumpTaskValidation);
 
                 Job.IsDumpStatus = false;
 
                 Assert.IsFalse(Job.IsDumpStatus);
-                Assert.IsTrue(Job.IsDumpTaskValidation);
-                Assert.IsNotNull(Job.Dumper.Instance);
-                Assert.IsTrue(Job.Dumper.IsWorking);
+                Assert.IsNull(Job.Dumper.Instance);
+                Assert.IsFalse(Job.Dumper.IsWorking);
                 Assert.IsFalse(Job.Dumper.IsDumpStatus);
-                Assert.IsTrue(Job.Dumper.IsDumpTaskValidation);
 
                 Job.IsDumpTaskValidation = false;
 
@@ -314,7 +297,7 @@ namespace TestFormXb
 
                             execCountNonUi++;
                             Assert.IsFalse(Job.IsUIThread, "RunTestCancelTest");
-                        }, false, "RunTestCancelTest", cancellerNonUi);
+                        }, false, "RunTestCancelTest", cancellerNonUi.Token);
                     }
                     catch (OperationCanceledException)
                     {
@@ -336,7 +319,7 @@ namespace TestFormXb
 
                             execCountUi++;
                             Assert.IsTrue(Job.IsUIThread, "RunTestCancelTest");
-                        }, true, "RunTestCancelTest", cancellerUi);
+                        }, true, "RunTestCancelTest", cancellerUi.Token);
                     }
                     catch (OperationCanceledException)
                     {
@@ -418,7 +401,7 @@ namespace TestFormXb
 
                             return execCountNonUi;
 
-                        }, false, "RunTestTCancelTest", cancellerNonUi);
+                        }, false, "RunTestTCancelTest", cancellerNonUi.Token);
 
                         Assert.AreEqual(res, execCountNonUi, "RunTestTCancelTest");
                     }
@@ -446,7 +429,7 @@ namespace TestFormXb
 
                             return execCountUi;
 
-                        }, true, "RunTestTCancelTest", cancellerUi);
+                        }, true, "RunTestTCancelTest", cancellerUi.Token);
 
                         Assert.AreEqual(res, execCountUi, "RunTestTCancelTest");
                     }
@@ -535,7 +518,7 @@ namespace TestFormXb
                     try
                     {
                         await Job.RunSerial(
-                            canceller,
+                            canceller.Token,
                             Job.CreateJob(() =>
                             {
                                 canceller.Cancel(true);
@@ -608,7 +591,7 @@ namespace TestFormXb
                             return true;
                         },
                         true,
-                        null,
+                        default,
                         Job.CreateJob(() =>
                         {
                             jobCount++;
@@ -680,7 +663,7 @@ namespace TestFormXb
                                 return true;
                             },
                             true,
-                            canceller,
+                            canceller.Token,
                             Job.CreateJob(() =>
                             {
                                 jobCount++;
@@ -796,9 +779,9 @@ namespace TestFormXb
 
                 Job.Run(() =>
                 {
-                    manager.Regist(action);
-                    manager.Regist(action);
-                    manager.Regist(action);
+                    manager.Register(action);
+                    manager.Register(action);
+                    manager.Register(action);
                 });
 
 
@@ -812,9 +795,9 @@ namespace TestFormXb
 
                 Job.Run(() =>
                 {
-                    manager.Regist(action);
-                    manager.Regist(action);
-                    manager.Regist(action);
+                    manager.Register(action);
+                    manager.Register(action);
+                    manager.Register(action);
                 });
 
                 Job.WaitSynced(1000);
@@ -826,20 +809,6 @@ namespace TestFormXb
                 Job.WaitSynced(7000);
 
                 Assert.AreEqual(execCount, 3);
-            }
-            catch (Exception ex)
-            {
-                Xb.Util.Out(ex);
-                throw;
-            }
-        }
-
-
-        private void Template()
-        {
-            try
-            {
-
             }
             catch (Exception ex)
             {

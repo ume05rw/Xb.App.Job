@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace Xb.App
@@ -66,9 +63,11 @@ namespace Xb.App
             /// <param name="delayedAction"></param>
             /// <param name="delayMsec"></param>
             /// <param name="maxDelayMsec"></param>
-            public DelayedOnceJobManager(Action delayedAction
-                                       , int delayMsec = DefaultDelayMsec
-                                       , int maxDelayMsec = 0)
+            public DelayedOnceJobManager(
+                Action delayedAction,
+                int delayMsec = DefaultDelayMsec,
+                int maxDelayMsec = 0
+            )
             {
                 this._delayedAction = delayedAction;
                 this.DelayMsec = delayMsec;
@@ -79,6 +78,10 @@ namespace Xb.App
             /// <summary>
             /// Request execution
             /// </summary>
+            /// <remarks>
+            /// キャンセルは出来ない仕様。
+            /// やるなら一度Disposeして再生成する。
+            /// </remarks>
             public void Run()
             {
                 this.ScheduledTime = DateTime.Now.AddMilliseconds(this.DelayMsec);
@@ -91,10 +94,13 @@ namespace Xb.App
                 if (this.MaxDelayMsec > 0)
                     this.ScheduleLimitedTime = DateTime.Now.AddMilliseconds(this.MaxDelayMsec);
 
-                Job.Run(() =>
+                _ = Job.Run(async () =>
                 {
                     while (true)
                     {
+                        if (this._disposedValue)
+                            break;
+
                         //最後にスケジュールされた時刻を過ぎたとき
                         if (this.ScheduledTime <= DateTime.Now)
                             break;
@@ -107,15 +113,23 @@ namespace Xb.App
                         //最終スケジュール時刻と最大遅延スケジュール時刻の、小さい方を
                         //次回検証時刻にする。
                         var wakeTime = this.ScheduledTime;
-                        if (this.MaxDelayMsec > 0
-                            && this.ScheduledTime > this.ScheduleLimitedTime)
+                        if (
+                            this.MaxDelayMsec > 0
+                            && this.ScheduledTime > this.ScheduleLimitedTime
+                        )
+                        {
                             wakeTime = this.ScheduleLimitedTime;
+                        }
 
                         //次回検証時刻までの間の時間をMsecで取得。
                         var sleepMsec = (int)(wakeTime - DateTime.Now).TotalMilliseconds + 10;
 
-                        Job.WaitSynced(sleepMsec);
+                        await Task.Delay(sleepMsec)
+                            .ConfigureAwait(false);
                     }
+
+                    if (this._disposedValue)
+                        return;
 
                     try
                     {
@@ -130,11 +144,12 @@ namespace Xb.App
 
                     this.IsScheduled = false;
 
-                }, false, "DelayedJobManager.Run").ConfigureAwait(false);
+                }, false, "DelayedJobManager.Run");
             }
 
             #region IDisposable Support
-            private bool disposedValue = false; // 重複する呼び出しを検出するには
+
+            private bool _disposedValue = false; // 重複する呼び出しを検出するには
 
             /// <summary>
             /// Dispose Implements
@@ -142,14 +157,18 @@ namespace Xb.App
             /// <param name="disposing"></param>
             protected virtual void Dispose(bool disposing)
             {
-                if (!disposedValue)
+                if (!this._disposedValue)
                 {
                     if (disposing)
                     {
+                        this.ScheduledTime = default;
+                        this.ScheduleLimitedTime = default;
+                        this.IsScheduled = default;
+                        this.DelayMsec = default;
+                        this.MaxDelayMsec = default;
                         this._delayedAction = null;
-                        // TODO: マネージ状態を破棄します (マネージ オブジェクト)。
                     }
-                    disposedValue = true;
+                    this._disposedValue = true;
                 }
             }
 
@@ -158,8 +177,10 @@ namespace Xb.App
             /// </summary>
             public void Dispose()
             {
-                Dispose(true);
+                this.Dispose(true);
+                GC.SuppressFinalize(this);
             }
+
             #endregion
         }
     }
