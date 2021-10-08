@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Xb.App.Job.FW4.5.1", "Xb.Ap
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestFormXb.App.Job", "TestFormXb.App.Job\TestFormXb.App.Job.csproj", "{A53C5B6D-9066-4F4E-83B4-45D6921ADE89}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Xb.App.Job.Test", "Xb.App.Job.Test\Xb.App.Job.Test.csproj", "{61A80E3F-BF0F-4F35-A562-4D731EA76944}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,8 +29,15 @@ Global
 		{A53C5B6D-9066-4F4E-83B4-45D6921ADE89}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A53C5B6D-9066-4F4E-83B4-45D6921ADE89}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A53C5B6D-9066-4F4E-83B4-45D6921ADE89}.Release|Any CPU.Build.0 = Release|Any CPU
+		{61A80E3F-BF0F-4F35-A562-4D731EA76944}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{61A80E3F-BF0F-4F35-A562-4D731EA76944}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{61A80E3F-BF0F-4F35-A562-4D731EA76944}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{61A80E3F-BF0F-4F35-A562-4D731EA76944}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {EB0F4947-ED7B-45BE-A86D-1F9D3DB614F0}
 	EndGlobalSection
 EndGlobal

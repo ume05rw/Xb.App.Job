@@ -47,6 +47,7 @@ namespace Xb.App
             {
                 //Get UI-Thread infomation
                 Job._uiThreadId = Environment.CurrentManagedThreadId;
+
                 Job._uiTaskScheduler = TaskScheduler.FromCurrentSynchronizationContext();
                 Xb.Util.Out($"UI Thread ID = {Job._uiThreadId}");
 
@@ -171,7 +172,7 @@ namespace Xb.App
                     && ((CancellationToken)cancelToken).IsCancellationRequested
                 )
                 {
-                    throw new OperationCanceledException("Task Canceled.");
+                    return;
                 }
 
                 var callerName = action.Target?.GetType().Name ?? string.Empty;
@@ -194,11 +195,21 @@ namespace Xb.App
                             throw;
                         }
                         Job.Monitor.Instance?.End(startId);
+
                         return;
                     }
 
                     var innerAction = new Action(() =>
                     {
+                        //キャンセル指示済のとき、何も実行せず終了する。
+                        if (
+                            cancelToken != null
+                            && ((CancellationToken)cancelToken).IsCancellationRequested
+                        )
+                        {
+                            return;
+                        }
+
                         try
                         {
                             Job.Monitor.Instance?.SetThreadId(startId);
@@ -274,7 +285,7 @@ namespace Xb.App
                     && ((CancellationToken)cancelToken).IsCancellationRequested
                 )
                 {
-                    throw new OperationCanceledException("Task Canceled.");
+                    return default;
                 }
 
                 var callerName = func.Target?.GetType().Name ?? string.Empty;
@@ -285,15 +296,6 @@ namespace Xb.App
                 {
                     if (isExecUiThread && Job.IsUIThread)
                     {
-                        //キャンセル指示済のとき、何も実行せず終了する。
-                        if (
-                            cancelToken != null
-                            && ((CancellationToken)cancelToken).IsCancellationRequested
-                        )
-                        {
-                            throw new OperationCanceledException("Task Canceled.");
-                        }
-
                         //UIスレッド指定で、かつ現在UIスレッドのとき、そのまま実行する。
                         try
                         {
@@ -312,6 +314,15 @@ namespace Xb.App
 
                     var innerAction = new Func<TResult>(() =>
                     {
+                        //キャンセル指示済のとき、何も実行せず終了する。
+                        if (
+                            cancelToken != null
+                            && ((CancellationToken)cancelToken).IsCancellationRequested
+                        )
+                        {
+                            return default;
+                        }
+
                         try
                         {
                             Job.Monitor.Instance?.SetThreadId(startId);
@@ -569,7 +580,7 @@ namespace Xb.App
                     && ((CancellationToken)cancelToken).IsCancellationRequested
                 )
                 {
-                    throw new OperationCanceledException("Task Canceled.");
+                    return;
                 }
 
                 var task = (cancelToken == null)
@@ -802,7 +813,7 @@ namespace Xb.App
                         && ((CancellationToken)cancelToken).IsCancellationRequested
                     )
                     {
-                        throw new OperationCanceledException("Task Canceled.");
+                        return;
                     }
 
                     if (job.DelayMSec > 0)
@@ -928,7 +939,7 @@ namespace Xb.App
                     && ((CancellationToken)cancelToken).IsCancellationRequested
                 )
                 {
-                    throw new OperationCanceledException("Task Canceled.");
+                    return default;
                 }
 
                 return await Job.Run<T>(
